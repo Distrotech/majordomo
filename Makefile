@@ -13,14 +13,14 @@
 #
  
 # Put the location of your Perl binary here:
-PERL = /bin/perl
+PERL = /usr/bin/perl
 
 # What do you call your C compiler?
 CC = cc
  
 # Where do you want Majordomo to be installed?  This CANNOT be the
 # current directory (where you unpacked the distribution)
-W_HOME = /usr/test/majordomo-$(VERSION)
+W_HOME = /opt/majordomo
  
 # Where do you want man pages to be installed?
 MAN = $(W_HOME)/man
@@ -66,7 +66,7 @@ W_PATH = /bin:/usr/bin:/usr/ucb
 W_MAJORDOMO_CF = $(W_HOME)/majordomo.cf
 
 # A directory for temp files..
-TMPDIR = /usr/tmp
+TMPDIR = /tmp
 
 #--------YOU SHOULDN'T HAVE TO CHANGE ANYTHING BELOW THIS LINE.-------------
 
