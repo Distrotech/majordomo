@@ -20,6 +20,9 @@
 # until we run suid...
 #$ENV{'PATH'} = "/bin:/usr/bin:/usr/ucb";
 
+use Time::Local;
+use POSIX;
+
 # Before doing anything else tell the world I am majordomo
 # The mj_ prefix is reserved for tools that are part of majordomo proper.
 $main'program_name = 'mj_majordomo';#';
@@ -59,7 +62,6 @@ print STDERR "$0: starting\n" if $DEBUG;
 
 # All these should be in the standard PERL library
 unshift(@INC, $homedir);
-require "ctime.pl";		# To get MoY definitions for month abbrevs
 require "majordomo_version.pl";	# What version of Majordomo is this?
 require "majordomo.pl";		# all sorts of general-purpose Majordomo subs
 require "shlock.pl";		# NNTP-style file locking

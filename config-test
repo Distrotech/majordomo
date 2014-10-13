@@ -7,8 +7,10 @@
 # execute this by cd to your majordomo dir, then 'wrapper config-test'
 #
 
-@requires = ( "ctime.pl",
-	     "majordomo_version.pl",
+use Time::Local;
+use POSIX;
+
+@requires = ("majordomo_version.pl",
 	     "majordomo.pl",
 	     "shlock.pl",
 	     "config_parse.pl",

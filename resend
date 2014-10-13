@@ -53,6 +53,10 @@ $main'program_name = 'mj_resend'; #';
 # from "filename", and shove them onto the ARGV for later processing
 # by &Getopts()
 #
+
+use Time::Local;
+use POSIX;
+
 if ($ARGV[0] =~ /^\@/) {
     $fn = shift(@ARGV);
     $fn =~ s/^@//;
@@ -93,7 +97,6 @@ require "$cf";
 chdir($homedir) || die("Can't chdir(\"$homedir\"): $!");
 
 unshift(@INC, $homedir);
-require "ctime.pl";  # For logging purposes
 require "majordomo.pl";
 require "majordomo_version.pl";
 require "config_parse.pl";

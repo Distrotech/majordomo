@@ -44,7 +44,7 @@ $DEBUG = $main'DEBUG;
 
 sub main'ParseMailHeader  ## Public
 {
-    local($save1, $save2) = ($*, $/);
+    local($save1) = ($/);
     local($FH, *array) =  @_;
     local ($keyw, $val);
 
@@ -54,14 +54,14 @@ sub main'ParseMailHeader  ## Public
     local($package) = caller;
     $FH =~ s/^[^':]+$/$package'$&/;
 
-    ($*, $/) = (1, '');
+    $/ = '';
     $array = $_ = <$FH>;
-    s/\n\s+/ /g;
-       
+    s/\n\s+/ /gms;
+
     @array = split('\n');
     foreach $_ (@array)
     {
-	($keyw, $val) = m/^([^:]+):\s*(.*\S)\s*$/g;
+	($keyw, $val) = m/^([^:]+):\s*(.*\S)\s*$/gms;
 	$keyw =~ y/A-Z/a-z/;
 	if (defined($array{$keyw})) {
 	    $array{$keyw} .= ", $val";
@@ -69,7 +69,7 @@ sub main'ParseMailHeader  ## Public
 	    $array{$keyw} = $val;
 	}
     }
-    ($*, $/) = ($save1, $save2); 
+    $/ = $save1;
 }
 
 

@@ -42,6 +42,9 @@
 # PATH it is set in the wrapper, so there is no need to set it here.
 #$ENV{'PATH'} = "/bin:/usr/bin:/usr/ucb";
 
+use Time::Local;
+use POSIX;
+
 ($program_name = $0) =~ s|.*/||;
 
 # Change directory to our home
@@ -61,7 +64,6 @@ require "$cf";
 
 # All these should be in the standard PERL library
 unshift(@INC, $homedir);
-require "ctime.pl";		# To get MoY definitions for month abbrevs
 require "majordomo_version.pl";	# What version of Majordomo is this?
 require "majordomo.pl";		# all sorts of general-purpose Majordomo subs
 require "shlock.pl";		# NNTP-style file locking
