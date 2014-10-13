@@ -111,19 +111,20 @@ install: wrapper install-scripts install-cf install-man
 	@echo ""
 	@echo "If not installing the wrapper, type"
 	@echo ""
-	@echo "	    cd $(W_HOME); ./wrapper config-test"
+	@echo "	    cd $(DESTDIR)$(W_HOME); ./wrapper config-test"
 	@echo ""
 	@echo "(no 'su' necessary) to verify the installation."
 
 
 install-wrapper: wrapper
+	install -d $(DESTDIR)$(W_HOME)
 	$(INSTALL) -o $(WRAPPER_OWNER) -g $(WRAPPER_GROUP) \
-		-m $(WRAPPER_MODE) wrapper $(W_HOME)/wrapper
+		-m $(WRAPPER_MODE) wrapper $(DESTDIR)$(W_HOME)/wrapper
 	@echo ""
 	@echo "To verify that all the permissions and etc are correct,"
 	@echo "run the command"
 	@echo ""
-	@echo "	     cd $(W_HOME); ./wrapper config-test"
+	@echo "	     cd $(DESTDIR)$(W_HOME); ./wrapper config-test"
 
 # fix where perl lives.
 # Create a tmp directory to stuff all the files in, so we 
@@ -143,30 +144,31 @@ config-scripts:
 
 
 install-scripts: config-scripts
-	$(INSTALL) -m $(HOME_MODE) $(INSTALL_FLAGS) . $(W_HOME)
-	$(INSTALL) -m $(EXEC_MODE) $(INSTALL_FLAGS) . $(W_HOME)/bin
+	install -d $(DESTDIR)$(W_HOME)
+	$(INSTALL) -m $(HOME_MODE) $(INSTALL_FLAGS) . $(DESTDIR)$(W_HOME)
+	$(INSTALL) -m $(EXEC_MODE) $(INSTALL_FLAGS) . $(DESTDIR)$(W_HOME)/bin
 
-	@echo "Copying tools to $(W_HOME)/bin"
+	@echo "Copying tools to $(DESTDIR)$(W_HOME)/bin"
 
 	@for file in $(BINBIN); do \
 		$(INSTALL) -m $(EXEC_MODE) $(INSTALL_FLAGS) \
-			$(TMP)/$$file $(W_HOME)/bin/$$file; \
+			$(TMP)/$$file $(DESTDIR)$(W_HOME)/bin/$$file; \
 	done
 
-	@echo "Copying Majordomo files to $(W_HOME)"
+	@echo "Copying Majordomo files to $(DESTDIR)$(W_HOME)"
 
 	@for file in $(BIN); do \
 		$(INSTALL) -m $(EXEC_MODE) $(INSTALL_FLAGS) \
-			$(TMP)/$$file $(W_HOME)/$$file; \
+			$(TMP)/$$file $(DESTDIR)$(W_HOME)/$$file; \
 	done
 
-	@echo "Copying archiving and other tools to $(W_HOME)/Tools"
+	@echo "Copying archiving and other tools to $(DESTDIR)$(W_HOME)/Tools"
 
-	$(INSTALL) -m $(EXEC_MODE) $(INSTALL_FLAGS) . $(W_HOME)/Tools
+	$(INSTALL) -m $(EXEC_MODE) $(INSTALL_FLAGS) . $(DESTDIR)$(W_HOME)/Tools
 
 	@for file in $(TOOLS); do \
 		$(INSTALL) -m $(EXEC_MODE) $(INSTALL_FLAGS) \
-			$(TMP)/$$file $(W_HOME)/Tools/$$file; \
+			$(TMP)/$$file $(DESTDIR)$(W_HOME)/Tools/$$file; \
 	done
 
 	@rm -rf $(TMP)	
@@ -177,46 +179,47 @@ install-scripts: config-scripts
 # all cases, the sample.cf file must be installed so that config-test will
 # be able to check for new variables.
 install-cf:
-	@if [ ! -f $(W_HOME)/majordomo.cf ]; \
+	install -d $(DESTDIR)$(W_HOME)
+	@if [ ! -f $(DESTDIR)$(W_HOME)/majordomo.cf ]; \
 	  then \
 	    if [ -f majordomo.cf ]; \
 	      then \
 		echo "Using majordomo.cf"; \
 	  	$(INSTALL) -m $(FILE_MODE) $(INSTALL_FLAGS) \
-			majordomo.cf $(W_HOME)/majordomo.cf; \
+			majordomo.cf $(DESTDIR)$(W_HOME)/majordomo.cf; \
 	      else \
 		echo "Using sample.cf"; \
 		$(INSTALL) -m $(FILE_MODE) $(INSTALL_FLAGS) \
-			sample.cf $(W_HOME)/majordomo.cf; \
+			sample.cf $(DESTDIR)$(W_HOME)/majordomo.cf; \
 	    fi; \
 	else \
 	   echo "Using installed majordomo.cf"; \
 	fi;
 	@$(INSTALL) -m $(FILE_MODE) $(INSTALL_FLAGS) \
-		sample.cf $(W_HOME)
+		sample.cf $(DESTDIR)$(W_HOME)
 
 install-man:
 	@echo "Installing manual pages in $(MAN)"
 	@$(INSTALL) -m $(EXEC_MODE) $(INSTALL_FLAGS) \
-		. $(MAN)
+		. $(DESTDIR)$(MAN)
 	@$(INSTALL) -m $(EXEC_MODE) $(INSTALL_FLAGS) \
-		. $(MAN)/man1
+		. $(DESTDIR)$(MAN)/man1
 	@$(INSTALL) -m $(EXEC_MODE) $(INSTALL_FLAGS) \
-		. $(MAN)/man8
+		. $(DESTDIR)$(MAN)/man8
 	@$(INSTALL) -m $(FILE_MODE) $(INSTALL_FLAGS) \
-		Doc/man/approve.1 $(MAN)/man1/approve.1
+		Doc/man/approve.1 $(DESTDIR)$(MAN)/man1/approve.1
 	@$(INSTALL) -m $(FILE_MODE) $(INSTALL_FLAGS) \
-		Doc/man/digest.1 $(MAN)/man1/digest.1
+		Doc/man/digest.1 $(DESTDIR)$(MAN)/man1/digest.1
 	@$(INSTALL) -m $(FILE_MODE) $(INSTALL_FLAGS) \
-		Doc/man/bounce.1 $(MAN)/man1/bounce.1
+		Doc/man/bounce.1 $(DESTDIR)$(MAN)/man1/bounce.1
 	@$(INSTALL) -m $(FILE_MODE) $(INSTALL_FLAGS) \
-		Doc/man/bounce-remind.1 $(MAN)/man1/bounce-remind.1
+		Doc/man/bounce-remind.1 $(DESTDIR)$(MAN)/man1/bounce-remind.1
 	@$(INSTALL) -m $(FILE_MODE) $(INSTALL_FLAGS) \
-		Doc/man/resend.1 $(MAN)/man1/resend.1
+		Doc/man/resend.1 $(DESTDIR)$(MAN)/man1/resend.1
 	@$(INSTALL) -m $(FILE_MODE) $(INSTALL_FLAGS) \
-		Doc/man/majordomo.8 $(MAN)/man8/majordomo.8
+		Doc/man/majordomo.8 $(DESTDIR)$(MAN)/man8/majordomo.8
 	@$(INSTALL) -m $(FILE_MODE) $(INSTALL_FLAGS) \
-		Doc/man/resend.1 $(MAN)/man1/resend.1
+		Doc/man/resend.1 $(DESTDIR)$(MAN)/man1/resend.1
 
 wrapper: wrapper.c
 	$(CC)  $(WRAPPER_FLAGS) -o wrapper wrapper.c
