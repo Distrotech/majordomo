@@ -1,0 +1,103 @@
+#!/bin/perl
+
+
+# $Source: /sources/cvsrepos/majordomo/contrib/new-list,v $
+# $Revision: 1.14 $
+# $Date: 1996/12/09 16:50:45 $
+# $Author: cwilson $
+# $State: Exp $
+#
+# $Locker:  $
+
+# set our path explicitly
+$ENV{'PATH'} = "/bin:/usr/bin:/usr/ucb";
+
+# Read and execute the .cf file
+$cf = $ENV{"MAJORDOMO_CF"} || "/etc/majordomo.cf";
+if ($ARGV[0] eq "-C") {
+    $cf = $ARGV[1];
+    shift(@ARGV); 
+    shift(@ARGV); 
+}
+if (! -r $cf) {
+    die("$cf not readable; stopped");
+}
+require "$cf";
+
+chdir($homedir) || die("Can't chdir(\"$homedir\"): $!");
+unshift(@INC, $homedir);
+require "majordomo.pl";
+require "shlock.pl";
+
+&ParseMailHeader(STDIN, *hdrs);
+$reply_to = &RetMailAddr(*hdrs);
+$reply_to = join(", ", &ParseAddrs($reply_to));
+die("new-list: $reply_to is not a valid return address.\n")
+    if (! &valid_addr($reply_to));
+
+$in_reply_to = $hdrs{"message-id"} . ", from " . $hdrs{"from"};
+$list = $ARGV[0];
+
+# Define all of the mailer properties:
+# It is possible that one or both of $sendmail_command and $bounce_mailer
+# are not defined, so we provide reasonable defaults.
+$sendmail_command = "/usr/lib/sendmail"
+  unless defined $sendmail_command;
+$bounce_mailer = "$sendmail_command -f\$sender -t"
+  unless defined $bounce_mailer;
+
+$sender = "$list-approval";
+
+$mailcmd = eval qq/"$bounce_mailer"/;
+
+if (defined($isParent = open(MAIL, "|-"))) {
+    &do_exec_sendmail(split(' ', $mailcmd))
+	unless $isParent;
+} else {
+    &abort("Failed to fork prior to mailer exec");
+}
+
+
+print MAIL <<"EOM";
+To: $reply_to
+Cc: $list-approval
+From: $list-approval
+Subject: Your mail to $list\@$whereami
+In-Reply-To: $in_reply_to
+Reply-To: $list-approval\@$whereami
+
+This pre-recorded message is being sent in response to your recent
+email to $list\@$whereami.
+
+If you were trying to subscribe to the list, please send your request
+to $whoami, not to $list\@$whereami.
+
+This is a new list.  Your message is being returned unsent, but please
+hold on to it.  After a few days, when the flood of subscription
+requests has died down somewhat, the owner of the list will announce
+that the list is "open for business"; you should resubmit your posting
+then.  This way, everybody who joins the list within the first few days
+of its existence starts out on an even footing, and we don't end up
+with every other message asking "what did I miss?".
+
+Here's your original, unsent message:
+
+EOM
+    ;
+
+foreach ("From", "To", "Cc", "Subject", "Date", "Message-ID") {
+    ($hdr = $_) =~ tr/A-Z/a-z/;
+    if (defined($hdrs{$hdr})) {
+	print MAIL $_, ": ", $hdrs{$hdr}, "\n";
+    }
+}
+
+print MAIL "\n";
+
+while (<STDIN>) {
+    print MAIL $_;
+}
+
+close(MAIL);
+
+exit 0;

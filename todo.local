@@ -1,0 +1,100 @@
+Partial: add code to override the archive directory on a per list basis. 
+
+   config file recognizes keyword archive_dir, majordomo get/index
+   doesn't use it yet.
+
+Partial: add more keywords:
+
+   DONE:    comments (array)- allow commentary/rcs log info
+
+      process - time interval - if in time interval, process
+				requests, otherwise exit status 75
+      file-process - see process, for get/put
+      resend-process - see process
+
+      load - three floats (1, 5, 15 minute load average. 0.0 means
+	     doesn't matter). If
+	     uptime load > any one of these, then exit with code 75 to
+             have sendmail requeue the job and try later.
+
+      file-times - a time/day spec for times that majordomo should process
+	   	   get/index and other specs. Exit w/ code 75 if wrong time.
+
+      resend-times - a time/day spec for when resend shouldn't run. 
+		     Exit w/ code 75 if wrong time.
+
+      exclude-user - opposite of -I flag to exclude ability of people
+		     to post to a mailing list.
+
+NOT: analyze code to make sure all areas that require locks are in place
+
+NOT: Analyze code to replace all mailer invocation with code that can be
+     set in the majordomo.cf file. This includes normalizing the
+     variable for the -f argument to sendmail, and the sendmail location etc.
+
+NOT: detect error condition (e.g. out of disk space) and deal with them
+	(e.g. check close return values)
+
+NOT: clean up messages that are put into the config file. Diction and
+	parallelism needs work.
+
+NOT: vett any and all \001's that may be in the config file.
+
+NOT: create an addin that uses the config file stuff.
+
+NOT: after alan's stuff add pre/post message hook to the code.
+
+NOT: add code to support incremental config file changes.
+
+NOT: Add support for delayed reply REPLY handling.
+    Remove sendmail open from majordomo, add send_reply command
+	have all prints to reply be pushes onto $Reply.
+
+    First shot screwed up something with the filehandles. Need to
+    try again. It may be perl 4.019 rearing its ugly head.
+
+partial: add ability to add arbitrary headers to message
+
+	config file elements in place as type string array. This should
+	probably be specialized so that only known or X- headers can
+	be specified. Also the code in resend has to be modified to
+	remove duplicate headers, and to allow override headers.
+
+DONE (12/8/93): add ability to add reply to header that has sender's
+		from address
+
+		Just specify $SENDER as the value of the reply_to string.
+		Actually the entire set of $<NAME> elements recognized
+		by &config'substitute_values is recognized.
+
+DONE (11/18/93): fix bug with mixing pipleines that allows portions on
+	incoming data stream into config file due to fork. When
+	running write_config (formally mk_default_config).
+
+DONE: add configure get password
+
+DONE: add functions absolute_dir and absolute_file to look for / forms of
+      paths
+
+DONE: add support for enumerated keywords
+
+DONE: Add keyword subscribe_policy to have values open, closed, or auto
+	config file recognizes it, majordomo uses it.
+
+DONE: add support for array keyword values
+   Have added code to recognize key << END, and read it into a \001
+   seperated stringified array.
+
+   the only array values currently are: advertize/noadvertize
+	and majordomo can deal with the arrays.
+
+   Also comments is an array, but is only for internal config file use.
+
+DONE: fix do_approve so it loads the config file when it gets called
+     this will allow config file password to be used for approves.
+
+DONE: fix keywords so they all use _ or - as a seperator character.
+	chose _
+
+DONE: enhance resend so that trailer text can be added to the code.
+	keyword message_footer

@@ -1,0 +1,348 @@
+From: pdc@lunch.asd.sgi.com (Paul Close)
+Subject: Digest code diffs for 1.90
+Date: Thu, 21 Apr 1994 17:56:22 -0700 (PDT)
+
+Here are my changes to digest which support config file settings for
+specifying the digest size in lines and/or the maximum age of the oldest
+article, in days.  Also support a new flag, -p (for "push"), intended for
+use by cron jobs.  It checks to see if a digest should be sent, and sends
+it if it should (pretty well because an article is too old, but you could
+use this to send all the time).
+
+A few comments on the code.  In &should_be_sent, I calculate how big the
+article would be if the headers were stripped, both in bytes and in lines.
+I add in a bit of a fudge factor for mail headers, just so we don't get too
+close to maxlength bytes before sending.  Typically, the line count will
+cause a digest to be sent before the byte count would (I see the maxlength
+count as more of a mailer issue than a digest issue).
+
+The old digest code had a strange construct: s/\n+$/\n/;  I assumed that
+this was to trim newlines off the end of the string, but multi-line regexps
+don't work that way.  The only way I could get this to work is:
+
+    $len = length($body) - 1;
+    $len-- while (substr($body,$len,1) eq "\n");
+    substr($body,$len+1) = "";
+
+Any clever hacks appreciated.  In the same area, I changed the code that
+reads the body of the message to read the whole thing at once (undef $/)
+rather than do multiple string concatenations.  Seems more efficient.  I
+also added a ^From escaper, using enough of a real "From " line pattern,
+that it shouldn't match just any line beginning with From.
+
+Under the heading of random perl lore, to count the number of newlines in a
+multi-line string, I used:
+
+   $lines += ($body =~ s/\n/\n/g);
+
+seems pretty straightforward, but I have the nagging suspicion there's an
+easier way.
+
+Finally, I made digest safe past the year 2000, by printing $year+1900
+rather than 19$year.  Whoopee!
+
+Comments welcome!  The code is based on 1.90b2, which is the latest I have.
+
+Index: digest/digest
+*** digest/digest.old	Sun Mar  6 14:47:06 1994
+--- digest/digest	Thu Apr 21 17:35:33 1994
+***************
+*** 63,72 ****
+  
+  if (defined($opt_r)) {
+      &receive_message;
+  } elsif (defined($opt_m)) {
+      &make_digest;
+  } else {
+!     &abort("Usage: digest {-r|-m} [-c config|(-C -l list)]\nStopped");
+  }
+  
+  &free_lock;
+--- 63,79 ----
+  
+  if (defined($opt_r)) {
+      &receive_message;
++     if (&should_be_sent()) {
++ 	&make_digest;
++     }
+  } elsif (defined($opt_m)) {
+      &make_digest;
++ } elsif (defined($opt_p)) {
++     if (&should_be_sent()) {
++ 	&make_digest;
++     }
+  } else {
+!     &abort("Usage: digest {-r|-m|-p} [-c config|(-C -l list)]\nStopped");
+  }
+  
+  &free_lock;
+***************
+*** 73,97 ****
+  
+  exit(0);
+  
+  sub receive_message {
+-     $sum = 0;
+      $i = 0;
+      do {
+! 	$i++;
+! 	$file = sprintf("%s/%03d", $V{'INCOMING'}, $i);
+! 	$sum += (-s $file);
+      } until (! -e $file);
+      print STDERR "Receiving $i\n";
+      open(MSG, ">$file") || &abort("open(MSG, \">$file\"): $!");
+      while (<STDIN>) {
+  	print MSG $_;
+      }
+      close(MSG);
+-     $sum += (-s $file);
+-     if ($sum > $V{'DIGEST_SIZE'}) {
+- 	&make_digest;
+-     }
+-     return(1);
+  }
+  
+  
+--- 80,146 ----
+  
+  exit(0);
+  
++ sub should_be_sent {
++     # fudge factors for headers and footers
++     $sum = 600 + length($HEADER) + length($HEADERS) + length($TRAILER);
++     $lines = 25;
++     $i = 0;
++     while (1) {
++ 	$file = sprintf("%s/%03d", $V{'INCOMING'}, ++$i);
++ 	last unless (-e $file);
++ 	open(COUNT, "<$file") || &abort("open(COUNT, \"<$file\"): $!");
++ 
++ 	$/ = '';		# grab the header
++ 	$head = <COUNT>;
++ 
++ 	# only count From/Date/Subject header fields to get a
++ 	# more accurate size and line count.
++ 	$head =~ s/\n\s+/ /g;
++ 	$head =~ /^(From:\s+.*)/i    && ($sum += length($1)+1, $lines++);
++ 	$head =~ /^(Subject:\s+.*)/i && ($sum += length($1)+1, $lines++);
++ 	$head =~ /^(Date:\s+.*)/i    && ($sum += length($1)+1, $lines++);
++ 	$sum++, $lines++;
++ 
++ 	# count the body of the message
++ 	undef $/;
++ 	$body = <COUNT>;
++ 	$sum += length($body);
++ 	$lines += ($body =~ s/\n/\n/g);		# count newlines
++ 
++ 	$/ = "\n";
++ 	close(COUNT);
++ 	$sum += length($EB) + 2, $lines += 2;	# account for message delimiter
++ 
++ 	if ($V{'DIGEST_SIZE'} && $sum > $V{'DIGEST_SIZE'}) {
++ 	    return(1);
++ 	}
++ 	if ($V{'DIGEST_LINES'} && $lines > $V{'DIGEST_LINES'}) {
++ 	    return(1);
++ 	}
++ 	if ($V{'MAX_AGE'} && (-M $file) > $V{'MAX_AGE'}) {
++ 	    return(1);
++ 	}
++     }
++     print "don't send.  sum = $sum, lines = $lines\n";
++ 
++     return(0);
++ }
++ 
+  sub receive_message {
+      $i = 0;
+      do {
+!         $file = sprintf("%s/%03d", $V{'INCOMING'}, ++$i);
+      } until (! -e $file);
++ 
+      print STDERR "Receiving $i\n";
+      open(MSG, ">$file") || &abort("open(MSG, \">$file\"): $!");
++ 
++     # copy the message
+      while (<STDIN>) {
+  	print MSG $_;
+      }
++ 
+      close(MSG);
+  }
+  
+  
+***************
+*** 111,129 ****
+  	    $head = <message>;
+  	    $head =~ s/\n\s+/ /g;
+  	    $body = "";
+! 	    ($subj) = ($head =~ /^subject:\s+(.*)/i);
+! 	    $subj = "[none]" unless $subj;
+! 	    ($from) = ($head =~ /^from:\s+(.*)/i);
+! 	    ($date) = ($head =~ /^date:\s+(.*)/i);
+  
+! 	    $/ = "\n";
+! 	    while (<message>) {
+! 		    s/^-/- -/; #escape encapsulation boundaries in message
+! 		    $body .= $_;
+! 	    }
+  	    close(message);
+! 	    $body =~ s/\n+$/\n/;
+  
+  	    push(@subj,$subj);
+  	    print TEMP <<EOF;
+  From: $from
+--- 160,184 ----
+  	    $head = <message>;
+  	    $head =~ s/\n\s+/ /g;
+  	    $body = "";
+! 	    $subj = ($head =~ /^Subject:\s+(.*)/i)? $1: "[none]";
+! 	    ($from) = $head =~ /^From:\s+(.*)/i;
+! 	    ($date) = $head =~ /^Date:\s+(.*)/i;
+  
+! 	    undef $/;
+! 	    $body = <message>;
+  	    close(message);
+! 
+! 	    # escape ^From <user> <weekday> <month> <day> <hr:min:sec> ...
+! 	    $body =~
+! 		s/^From (\S+\s+\w{3}\s+\w{3}\s+\d+\s+\d+:\d+:\d+)/>From $1/g;
+! 	    $body =~ s/^-/- -/g; # escape encapsulation boundaries in message
+! 	    # trim trailing \n's
+! 	    $len = length($body) - 1;
+! 	    $len-- while (substr($body,$len,1) eq "\n");
+! 	    substr($body,$len+1) = "";
+  
++ 	    $/ = "\n";
++ 
+  	    push(@subj,$subj);
+  	    print TEMP <<EOF;
+  From: $from
+***************
+*** 131,136 ****
+--- 186,192 ----
+  Subject: $subj
+  
+  $body
++ 
+  $EB
+  
+  EOF
+***************
+*** 204,211 ****
+  	$* = 1;
+  	$HOME = $ENV{"HOME"} || (getpwuid($>))[7];
+  	chdir($HOME);
+! 	&getopt("rmc:Cl:") ||
+! 	    &abort("Usage: digest {-r|-m} [-c config|(-C -l list)]\nStopped");
+  	$config = $opt_c || "$HOME/.digestrc";
+  	$TEMP = "/tmp/digest.$$";
+  	$SIG{'INT'} = 'cleanup';
+--- 260,267 ----
+  	$* = 1;
+  	$HOME = $ENV{"HOME"} || (getpwuid($>))[7];
+  	chdir($HOME);
+! 	&getopt("rmpc:Cl:") ||
+! 	    &abort("Usage: digest {-r|-m|-p} [-c config|(-C -l list)]\nStopped");
+  	$config = $opt_c || "$HOME/.digestrc";
+  	$TEMP = "/tmp/digest.$$";
+  	$SIG{'INT'} = 'cleanup';
+***************
+*** 245,252 ****
+  		$NUMBER = $config_opts{$opt_l,"digest_issue"};
+  		$Precedence = $config_opts{$opt_l,"precedence"};
+  		$Precedence = "bulk" if ($Precedence eq "");
+! 		$V{'ARCHIVE'} = "$filedir/$opt_l$filedirsuffix";
+  		$V{'DIGEST_SIZE'} = $config_opts{$opt_l, "maxlength"};
+  		$V{'ERRORS-TO'} = $config_opts{$opt_l,"sender"};
+  		$V{'FROM'} = $config_opts{$opt_l, "sender"};
+  		$V{'INCOMING'} = "$digest_work_dir/$opt_l";
+--- 301,310 ----
+  		$NUMBER = $config_opts{$opt_l,"digest_issue"};
+  		$Precedence = $config_opts{$opt_l,"precedence"};
+  		$Precedence = "bulk" if ($Precedence eq "");
+! 		$V{'ARCHIVE'} = "$filedir/$opt_l$filedir_suffix";
+  		$V{'DIGEST_SIZE'} = $config_opts{$opt_l, "maxlength"};
++ 		$V{'DIGEST_LINES'} = $config_opts{$opt_l, "digest_maxlines"};
++ 		$V{'MAX_AGE'} = $config_opts{$opt_l, "digest_maxdays"};
+  		$V{'ERRORS-TO'} = $config_opts{$opt_l,"sender"};
+  		$V{'FROM'} = $config_opts{$opt_l, "sender"};
+  		$V{'INCOMING'} = "$digest_work_dir/$opt_l";
+***************
+*** 327,333 ****
+  
+  sub getdate {
+    local($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+!   return($DAYS[$wday] . ", $mday " . $MONTHS[$mon] . " 19$year");
+  }
+  
+  sub set_lock {
+--- 385,392 ----
+  
+  sub getdate {
+    local($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+!   $year += 1900;
+!   return("$DAYS[$wday], $mday $MONTHS[$mon] $year");
+  }
+  
+  sub set_lock {
+
+Index: config_parse.pl
+*** config_parse.pl.old	Thu Apr 21 07:32:50 1994
+--- config_parse.pl	Thu Apr 21 07:41:33 1994
+***************
+*** 128,133 ****
+--- 128,135 ----
+  	'digest_archive',	'',
+  	'digest_rm_footer',  '',
+  	'digest_rm_fronter', '',  
++ 	'digest_maxlines',	'',
++ 	'digest_maxdays',	'',
+  # general stuff below
+  	'comments',		'',   # comments about config file
+  	);
+***************
+*** 331,336 ****
+--- 333,346 ----
+  Just like digest_rm_footer, it is also non-operative.',
+  );
+  
++ 'digest_maxlines',
++ "automatically generate a new digest when the size of the digest exceeds
++ this number of lines.",
++ 
++ 'digest_maxdays',
++ "automatically generate a new digest when the age of the oldest article in
++ the queue exceeds this number of days.",
++ 
+  # match commands to their subsystem, by default only 4 subsystems
+  # exist, majordomo, resend, digest and config.
+  %subsystem = ( 
+***************
+*** 372,377 ****
+--- 382,389 ----
+  	'digest_archive',	'digest',
+  	'digest_rm_footer',  'digest',
+  	'digest_rm_fronter', 'digest',  
++ 	'digest_maxlines',	'digest',
++ 	'digest_maxdays',	'digest',
+  # general stuff here
+  	'comments',		'config',
+  );
+***************
+*** 418,423 ****
+--- 430,437 ----
+  	'digest_archive',	'grab_absolute_dir',
+  	'digest_rm_footer',  'grab_word',
+  	'digest_rm_fronter', 'grab_word',  
++ 	'digest_maxlines',	'grab_integer',
++ 	'digest_maxdays',	'grab_integer',
+  # general stuff below
+  	'comments',		'grab_string_array',
+  	);
+
+-- 
+Paul Close	     pdc@sgi.com	   ...!{ames, decwrl, uunet}!sgi!pdc
+
+			No fate but what we make
+

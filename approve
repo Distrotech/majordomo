@@ -1,0 +1,252 @@
+#!/bin/perl
+
+# Approve Majordomo requests or "resend" bounces.
+#
+# Given arguments, approves the requests in those files;
+# given no arguments, reads standard input.
+#
+# If the "Subject: " line is "APPROVE <list>", the message is treated as
+# a request for approval from Majordomo.  An appropriate command is generated
+# and mailed to Majordomo to approve the request.
+#
+# If the "Subject: " line is "BOUNCE <list>: <reason>", the message is treated
+# as a posting rejected by "resend" for some reason, and is reformatted with
+# appropriate "Approved:" headers to cause it to succeed, then resubmitted
+# for posting.
+#
+# Assumes that the "approve" password for each list is the same as the
+# "approval" password used by "resend", and that this password is stored
+# in a file called ".majordomo" in the user's home directory, in the
+# following format:
+# 
+# 	List		Password	Majordomo-Address
+# 
+# Assumes that the "Majordomo-Address" field is an Internet-style 
+# "something@somewhere" address, and that postings for "List" should
+# be sent to "List@somewhere".
+#
+# Here's an example of what a .majordomo file should look like:
+# 
+# 	this-list	passwd1		Majordomo@This.COM
+# 	other-list	passwd2		Majordomo@Other.GOV
+# 
+# If, for instance, /tmp/request contains a standard request from Majordomo
+# to a list manager, such as:
+#
+#	From: Majordomo@This.COM
+#	To: this-list-approval@This.COM
+#
+#	User@Fubar.COM (Joe User) requests you approve the following:
+#
+#		subscribe this-list User@Fubar.COM (Joe User)
+#
+#	If you approve, send a line such as the following to Majordomo@This.COM:
+#
+#		approve PASSWD subscribe this-list User@Fubar.COM (Joe User)
+# 
+# Then, if you run "approve /tmp/request" or "approve < /tmp/request", the
+# following message will be sent to Majordomo@This.COM:
+#
+#	To: Majordomo@This.COM
+#
+# 	approve passwd1 subscribe this-list User@Fubar.COM (Joe User)
+# 
+# Brent Chapman                                   Great Circle Associates
+# Brent@GreatCircle.COM                           1057 West Dana Street
+# +1 415 962 0841                                 Mountain View, CA  94041
+
+# $Source: /sources/cvsrepos/majordomo/approve,v $
+# $Revision: 1.15 $
+# $Date: 1997/04/05 19:18:36 $
+# $Author: cwilson $
+# $State: Exp $
+#
+# $Locker:  $
+
+$MAILER = '/usr/lib/sendmail' if -x '/usr/lib/sendmail';
+$MAILER = '/usr/sbin/sendmail' if -x '/usr/sbin/sendmail';
+
+die "Couldn't find a sendmail to invoke, please define!" 
+    if !$MAILER;
+
+
+require "getopts.pl";
+
+&Getopts("df:") ||
+    die("USAGE: approve [-f <config-file>] [-d] [<file> ...]\nStopped");
+
+if (!defined($opt_f)) {
+    $opt_f = "$ENV{HOME}/.majordomo";
+}
+
+&read_config();
+
+# Read the headers.  Look at the "Reply-To:" header to figure out where to
+# respond to.  Look at the "Subject:" header to figure out if this is an
+# APPROVE or a BOUNCE request.
+
+if (@ARGV) {
+    foreach $file (@ARGV) {
+	open(FILE, $file) || (warn("can't open \"$file\"; skipping"), next);
+	&process_file(FILE);
+	close(FILE);
+    }
+} else {
+    &process_file(STDIN);
+}
+
+exit(0);
+
+sub process_file {
+    local($FILE) = shift;
+    local($reply_to);
+    local($subject);
+    local($request);
+    local($list);
+
+    while (<$FILE>) {
+	s/\n$//;
+	if (/^reply-to:/i) {
+	    s/^\S*:\s+//;
+	    $reply_to = $_;
+	    $reply_to =~ tr/A-Z/a-z/;
+	    next;
+	}
+	if (/^subject:/i) {
+	    s/^\S*:\s+//;
+	    $subject = $_;
+	    $subject =~ tr/A-Z/a-z/;
+	    ($request, $list) = split(/\s/, $subject, 2);
+	    $list =~ s/:.*//;
+	    next;
+	}
+	if (/^$/) {
+	    last;
+	}
+    }
+
+    # we've read the headers, so we should know now if this is an "APPROVE"
+    # or a "BOUNCE" that we're processing.
+
+    if ($request eq "approve") { &process_approve($FILE); }
+    elsif ($request eq "bounce") { &process_bounce($FILE); }
+    else {
+	warn("unknown request type '$request' in file '$file'; skipping");
+    }
+}
+
+sub process_approve {
+    local($FILE) = shift;
+    while (<$FILE>) {
+	if ((/^\tsubscribe\s/) || (/^\tunsubscribe\s/)) {
+	    if (!defined($reply_to)) {
+		warn("No \"Reply-To:\"; exiting");
+		exit(1);
+	    }
+	    s/^\t//;
+	    split;
+	    $list = $_[1];
+	    $list =~ tr/A-Z/a-z/;
+	    $passwd = $passwd{"$list\@$reply_to"};
+	    if (! $passwd) {
+		warn("no password for list $list; skipping \"$_\"");
+		next;
+	    }
+	    if (defined($opt_d)) {
+		open(MAIL, ">&STDOUT");
+		print MAIL "-" x 20, "\n";
+	    } else {
+		open(MAIL, "|$MAILER $reply_to") ||
+		    die ("open(\"|$MAILER ...\"): $!");
+	    }
+
+	    print MAIL "To: $reply_to\n\n";
+	    print MAIL "approve $passwd $_";
+	    close(MAIL);
+	    last;
+	}
+    }
+    print STDERR "Mailed approved command to $list list.\n"
+	unless defined $opt_d;
+}
+
+sub process_bounce {
+    local($FILE) = shift;
+    local ($from_skipped);
+
+    # we've already skipped the header, so set up to approve the message
+
+    # first, figure out where to send it
+    if (defined($reply_to)) {
+	# if there's a "Reply-To:" field set, use it.
+	$post_to = $reply_to;
+    } elsif ($list =~ /\@/) {
+	# if the list name already appears fully qualified, use it
+	$post_to = $list;
+    } else {
+	# Well, can we figure it out?
+	if ($site{$list} eq "MULTIPLE") {
+	    warn("Can't distinguish between multiple lists named '$list'\nSkipping '$file'");
+	    return;
+	} else {
+	    $post_to = $list . "\@" . $site{$list};
+	}
+    }
+
+    if (!defined($passwd{$list})) {
+	warn "Can't find password for list $list, Stopped";
+	return;
+    }
+
+    if (defined($opt_d)) {
+	open(MAIL, ">&STDOUT");
+	print MAIL "-" x 20, "\n";
+	print MAIL "To: $post_to\n\n";
+    } else {
+	open(MAIL, "|$MAILER $post_to") || die("open(\"|$MAILER...\"): $!");
+    }
+
+    print MAIL "Approved: $passwd{$list}\n";
+
+    while (<$FILE>) {
+	if (/^>?From / && ! defined($from_skipped)) {
+	    # Skip any initial "From " or ">From " line
+	    $from_skipped = 1;
+	    next;
+	}
+	s/^~/~~/;
+	print MAIL $_;
+    }
+    close(MAIL);
+    print STDERR "Mailed approved message to $list list.\n";
+}
+
+sub read_config {
+    local($l);
+    local($p);
+    local($m);
+    local($s);
+    open(CONF, $opt_f) || die("open(CONF, \"$opt_f\"): $!");
+    while (<CONF>) {
+	s/\n$//;
+	s/#.*//;
+	if (/^$/) { next; }
+	split;
+	$l = $_[0];	$l =~ tr/A-Z/a-z/;	# list
+	$p = $_[1];				# password
+	$m = $_[2];	$m =~ tr/A-Z/a-z/;	# majordomo@site
+	split(/\@/, $m);
+	$s = $_[1];	$s =~ tr/A-Z/a-z/;	# site
+
+	$passwd{$l} = $p;
+	$passwd{"$l\@$m"} = $p;
+	$passwd{"$l\@$s"} = $p;
+	if (defined($site{$l})) {
+	    # if it's already defined, there's more than one list by this name
+	    $site{$l} = "MULTIPLE";
+	} else {
+	    $site{$l} = $s;
+	}
+    }
+    close(CONF);
+}

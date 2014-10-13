@@ -1,0 +1,51 @@
+#Digest configuration file
+#
+
+#name that appears in subject line and digest banner
+NAME=Firewalls Digest
+
+#address reader send to to reply to the entire list
+REPLY-TO=Firewalls@GreatCircle.COM
+
+#address error messages should go to
+ERRORS-TO=Firewalls-Digest-Owner@GreatCircle.COM
+
+#address the digest itself appears to be sent to
+TO=Firewalls-Digest@GreatCircle.COM
+
+#address the digest really is sent to
+REALLY-TO=Firewalls-Digest-Send@GreatCircle.COM
+
+#address administrative nonsense should go to
+FROM=Firewalls-Digest-Owner@GreatCircle.COM
+
+#file containing header text
+HEADER=/mycroft/brent/digest/firewalls-digest.header
+
+#file containing trailer text
+TRAILER=/mycroft/brent/digest/firewalls-digest.trailer
+
+#directory to store incoming messages
+#INCOMING=/usr/local/mail/digests/incoming/firewalls
+INCOMING=/mycroft/brent/digest/incoming
+
+#file containing volume number
+VOL_FILE=/mycroft/brent/digest/firewalls-digest.vol
+
+#file containing issue number
+NUM_FILE=/mycroft/brent/digest/firewalls-digest.num
+
+#directory to archive outgoing issues
+ARCHIVE=/mycroft/brent/digest/archive
+
+#directory containing shlock.pl and other stuff
+HOME=/mycroft/brent/digest
+
+#how big do we let digests get before sending?
+DIGEST_SIZE=40000
+
+#how many lines can a digest accumulate before we send it?
+DIGEST_LINES=
+
+#what is the oldest message we will put in a digest?
+MAX_DAYS=

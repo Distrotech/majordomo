@@ -1,0 +1,1718 @@
+This file is the chapter about Majordomo from the Nutshell Handbook
+"Managing Internet Information Services," written by Jerry Peek.
+The chapter is (c) Copyright 1994 by O'Reilly & Associates, Inc.,
+and was included in the Majordomo distribution by permission of the
+publisher.  You may not edit, adapt, or redistribute changed versions
+of this for other than your personal use without the express written
+permission of O'Reilly & Associates.  Sorry for the legal jargon;
+we said that to protect our copyright!
+
+This draft chapter is current as of March 15, 1994 but might not be
+kept up to date with the software.  The book version may also become
+different over time.
+
+In a few places, this chapter refers to previous chapters of the book.
+If you want to see those chapters, too, you'll have to buy the book ;-)
+(or borrow it).
+
+If you have comments or corrections, please send email to
+bookquestions@ora.com, phone +1-707-829-0515, or send snail mail to
+O'Reilly & Associates; 103A Morris Street; Sebastopol, CA 95472 USA.
+
+
+
+Majordomo is a set of programs written in Perl that automate operation
+of multiple mailing lists.  Majordomo automatically handles routine
+requests to subscribe or unsubscribe; it also has "closed lists" that
+route all subscription requests to a "list owner" for approval.  It
+also supports "moderated lists" that send all messages to the list
+owner for approval before they're sent to subscribers.  Once the list
+is set up, it can be controlled by electronic mail, so the list owner
+need not be on the machine where Majordomo is running.  It can also
+maintain simple archives and deliver them via e-mail.
+
+Although you don't need to know Perl to run Majordomo, the Perl
+interpreter must be installed on the computer where you run Majordomo.
+Perl's source code is freely available from archives around the
+Internet, such as ftp.uu.net.  You can also get ready-to-run versions
+from the CD-ROM that comes with the book "UNIX Power Tools."  (For more
+information about Perl, see the Nutshell Handbooks "Learning Perl" by
+Randal Schwartz and "Programming Perl" by Larry Wall and Randal
+Schwartz.)
+
+Majordomo's developer and maintainer, Brent Chapman, developed
+Majordomo for his own purposes (managing the mailing lists for SAGE,
+the System Administrators Guild).  He didn't try to make the software
+do everything a list server could possibly do.  Majordomo is popular
+anyway; it's good software that fills a real need.  This chapter covers
+Majordomo version 1.62, which is available free via ftp.
+
+One of Majordomo's real strengths is its relative simplicity.  You can
+figure it out in a few hours.  ListProcessor, another major mailing
+list management system, requires much longer--so much so that we
+couldn't cover it effectively in a book of this size.  We've left it
+for another book.  But if you intend to manage huge lists,
+ListProcessor provides lots of useful features that can make it well
+worth the effort.  We use ListProcessor for our company mailing lists.
+Chapter 1 has a short comparison of Majordomo and ListProcessor.
+
+A good way to learn more about Majordomo is by subscribing to the
+majordomo-users mailing list.  Send a subscription request to
+majordomo@greatcircle.com--see "A User's View of Majordomo", below,
+for instructions.  (Another list on the same host, majordomo-announce,
+announces new versions of Majordomo as well as bug fixes.  The
+majordomo-workers list is for people who develop Majordomo.)
+
+The first section of this chapter gives an overview of Majordomo as it
+is seen by users, list owners, and administrators; it also mentions a
+planned new release, Majordomo 2.0.  Then comes installation, creation
+of lists, and testing.  Finally there's a description of how to run and
+maintain a list.
+
+
+AN OVERVIEW OF MAJORDOMO
+
+Before we dip into the intricacies of setting up and running Majordomo
+mailing lists, it will be helpful to get an overview of how it works
+from the user's perspective, how the list owner manages a list, and how
+the various programs that make up the Majordomo package work together.
+
+
+A User's View of Majordomo
+
+First here's a user's guide to the Majordomo package.  (Actually, this
+is an introduction to majordomo, the program which provides all of
+these functions.)  It explains subscription, unsubscription, and all
+the other Majordomo commands available to users.  It also includes some
+notes for the person running the list about who has permission to use
+some commands.  (The section "List Server Software" in Chapter 1 shows
+how users interact with a list server.)
+
+A user can subscribe to a list, or ask about his or other users'
+subscriptions, by sending mail to the majordomo server, usually
+majordomo@hostname.  Put the commands in the body of the mail message
+(not on the "Subject:" header component).  Other than white space, the
+commands must be the first text in the message body; in other words,
+don't begin with "Dear Majordomo."
+
+In the sections below, items in brackets ([]) are optional.  If you
+include the optional item, don't type the brackets.
+
+- help
+
+  Sends one-line summaries of majordomo commands.  The first line of
+  output tells you which version of Majordomo the server is running.
+
+- info list
+
+  Sends an introduction to the list "list".
+
+- lists
+
+  Shows the lists served by this majordomo server.
+
+- subscribe list [address]
+
+  This command subscribes a user to the named "list".  Unless the user
+  includes the optional "address", Majordomo will use the e-mail
+  address in the mail message header ("Reply-to:", if any, otherwise
+  "From:") to send mail to the user.
+
+- unsubscribe list [address]
+
+  This unsubscribes the user (or "address") from "list".
+
+- which [address]
+
+  Tells the lists to which the user (or "address") is subscribed.
+
+- who list
+
+  Lists the subscribers of "list".
+
+- index list
+
+  Gives a listing of files in the "list" archive.  If the list is
+  private, only members can run this command.  Only for Majordomo
+  versions 1.54 and later.
+
+- get list filename
+
+  Mails a file named "filename" from the "list" archive.  If the list
+  is private, only members can run this command.  Only for Majordomo
+  versions 1.54 and later.
+
+- end
+
+  Stops reading the message.  This is useful for users whose mailer
+  adds text (like a signature) to the end of a message.
+
+  A line that starts with a dash (-) is also treated as an "end"
+  command by newer versions of Majordomo.  Because many peoples' mail
+  message signatures start with some dashes, this avoids error
+  messages.
+
+
+Majordomo for List Owners
+
+The list owner is the person (or persons) who will run day-to-day
+operations of a mailing list by responding to mail messages from
+Majordomo.  Each mailing list operated by Majordomo can have its own
+list owners.
+
+Majordomo has "open" and "closed" lists.  A subscriber to an open list
+will be approved automatically unless they specify an "address"
+different from the one in their e-mail header.  All subscriptions to
+closed lists will be sent to the list owner for approval.
+
+If you'd like a list with the absolute minimum of maintenance (but also
+a minimum of security), you could create an "auto" list.  All
+subscription or unsubscription requests will be honored without any
+input from the list owner.  For example, anyone could unsubscribe
+anyone else.
+
+Majordomo also has "public" and "private" lists.  In a public list,
+subscribers have access to information about other subscribers through
+the "who" and "which" commands; in a private list, they don't.  When a
+list is private, only subscribers can use the archive commands "index"
+and "get".
+
+The owner can potentially receive four types of messages: requests to
+approve subscriptions (or unsubscriptions), requests to approve
+messages to the list, notifications of successful subscriptions or
+unsubscriptions, and bounces (messages sent to the list that weren't
+delivered).  Which of these the owner receives, and how many, depends
+on the setup of the list (and of course, how many members the list
+has).  Majordomo provides the "approve" script to help handle approval
+of subscriptions and messages, and "bounce" to help handle bounces.
+
+
+Majordomo for Administrators
+
+The administrator in this context is the person who installs Majordomo,
+creates new lists, or changes the settings (moderated or not, private
+or public, etc.) of existing lists.  Unlike a list owner, the
+administrator needs to have direct access to the system where Majordomo
+is running.  In many cases, the list owner and the administrator are
+the same person, but they don't need to be.
+
+Majordomo is actually a suite of Perl scripts, not just one.  In this
+chapter, the name Majordomo (with an uppercase "M") refers to the whole
+package of programs and files.  majordomo (with a lowercase "m") means
+the individual program with that name.  Here is an outline of what each
+program and file in the Majordomo package does:
+
+- "majordomo" (the program itself) is run each time a message arrives
+  for the address majordomo@hostname.  It figures out what approval is
+  necessary and sends mail to the list owner as necessary, or simply
+  performs the requested commands.  Unlike a lot of system services,
+  majordomo doesn't run constantly (as a daemon).  It's started by your
+  system MTA when a message comes in.  The disadvantage is that you
+  don't have much control over Majordomo on a busy system.  The
+  advantage is that there's no daemon process to crash.
+
+- "resend" - When a message arrives to appear on a list, "resend"
+  checks the message according to its command line options.  If the
+  message must be approved or if there are other problems, the message
+  is forwarded to the list owner.  Otherwise, "resend" edits the
+  header, then hands the single message to the computer's MTA for
+  distribution to the list.  "resend" rewrites headers of messages but
+  uses the system's mail transfer agent (MTA) for mail delivery to the
+  lists.
+
+- The "wrapper" program allows other Majordomo programs to run as a
+  "trusted user"--so programs can set the correct envelope sender
+  address.  It's the only part of the Majordomo package that's written
+  in the C language.  (The rest is in Perl.)
+
+- The "bounce" script helps owners handle subscribers whose mail is
+  bouncing.  The "bounce-remind" script tries to notify those
+  subscribers about the problem.
+
+- The "approve" script is also for owners.  It simplifies approval of
+  subscriptions or moderated messages.
+
+- "new-list" answers mail sent to a new list.  Its replies ask people
+  to wait to send messages until the list owner opens the list for
+  business.
+
+- "request-answer" answers mail to the address "listname-request"
+  (see Chapter 2).  The replies tell people to mail to majordomo--and
+  how to find out more about the server.
+
+- "majordomo.cf" sets the configuration of the Majordomo system.
+
+You can control whether a list is open, public, moderated, and several
+other aspects of a list by creating files of the form
+"listname.option".  For example, to make a closed list, you simply
+create an empty file called "listname.closed".  (This will change in
+Majordomo 1.90; you'll use an overall configuration file for each list
+instead.)
+
+The owner is notified of all successful "subscribe" and "unsubscribe"
+actions.  If you don't want the owner to be notified, you can edit two
+subroutines in the majordomo script:  "welcome" sends subscription
+notices; "do_unsubscribe" sends unsubscription notices.
+
+
+Majordomo 2.0 is Coming
+
+Since late 1993, people have been working on major revisions to
+Majordomo.  A new version, 1.90, should be ready by the time this book
+is printed.  Version 1.90 has a new config file format and includes the
+"digest" program as part of Majordomo.  A list of the planned changes
+for list owners is in the section called "Majordomo Commands for List
+Owners".
+
+Majordomo 2.0 isn't cast in stone yet.  Besides the changes in version
+1.90, above, some of the major changes in version 2.0 will probably
+be:
+
+- The local site can define new Majordomo commands and add to existing
+  commands.  For instance, a site could change the "unsubscribe"
+  command to let users subscribe from all lists by sending
+  "unsubscribe *".
+
+- Replies can be edited automatically.  For instance, large replies
+  could be split into a series of smaller messages.
+
+- The "help" command will take arguments.  Instead of getting help for
+  all commands, a user could get help for just the "subscribe" command
+  by sending "help subscribe".
+
+
+
+INSTALLING MAJORDOMO
+
+In general, if you have a recent version of Perl on your UNIX system,
+majordomo should work too.  You'll need to set up the "majordomo.cf"
+file, and maybe tweak a couple of the scripts.  You'll also need a C
+compiler for the "wrapper" program (although you can work around that
+by copying a compiled version of "wrapper" from someone else who has
+the same computer and operating system).  But because the system is so
+simple and the code is so straightforward, it isn't hard to solve
+problems (especially if you've joined the majordomo-users mailing
+list).
+
+In the directions below, a name like $whoami is a Perl variable.  Most
+variables I cover are defined in the "majordomo.cf" file (see below).
+
+**NOTE** Although I show a step-by-step procedure here, I can't promise
+you that the following steps are exactly what you need for your
+computer.  Your system might be different.  You may have a different
+version of Majordomo than the one I installed.  Please use these steps
+as a GUIDE only.
+
+Here are the steps:
+
+1.  Be sure that your system has Perl version 4.035 (or later) and its
+    libraries.
+
+2.  Some sites give majordomo another name ("listmgr", "lists", etc.).
+    I don't recommend doing that unless you have a good reason:
+    especially as more documentation about Majordomo becomes available,
+    users may just get confused by giving the system other names.
+    Also, after Majordomo upgrades, you'll have to patch the system
+    again.
+
+    If you decide to change the name, edit all of the code references
+    to majordomo that are visible to users.  For example, change the
+    subject of mail messages that say "Majordomo results." You don't
+    need to change filenames like "majordomo.cf".  You definitely
+    shouldn't change the help file line that says "This is the
+    Majordomo listmanager written by Brent Chapman."
+
+3.  Pick a username, group name, and home directory for Majordomo.
+    A good name for both user and group is "majordom" (but not
+    "majordomo"; it's over the 8-character limit).  I made the home
+    directory /usr/local/majordomo.
+
+    As superuser, add that user and group to /etc/passwd and
+    /etc/group.  Make the home directory, set its owner and group to
+    "majordom", and set its mode to 775.
+
+    If the person who manages Majordomo doesn't want to "su" to
+    "majordom", you should add the manager's account to the "majordom"
+    group.  (I think it's not a good idea to maintain Majordomo as the
+    superuser; permissions and ownerships can accidentally be set
+    wrong.)  If there are list owners on the system, and if they should
+    be doing routine maintenance, add them to the "majordom" group,
+    too.
+
+4.  Set up the Majordomo directory structure.  Although I like to keep
+    all of Majordomo and its list files under Majordomo's home
+    directory, you don't have to.  The structure is flexible; you can
+    separate the programs and the lists if you want to (see the sample
+    majordomo.cf file a few steps ahead).  Here's the structure I'm
+    using.
+
+    My home directory holds the $log file and the majordomo.cf
+    configuration file.  The subdirectories are:
+
+    - "archive" has subdirectories that hold list archive files.
+
+    - "bin" is where I extracted the Majordomo distribution file:
+      executable scripts and documentation are here.  The documentation
+      and sample configurations are in a subdirectory named "Doc"; you
+      might want to move some or all of it somewhere else.
+
+    - "lists" has the files for the lists: subscribers, passwords, and
+      so on.
+
+    If you aren't installing all of Majordomo in its home directory,
+    create the other directories now and set their ownership.  Create
+    an empty $log file with owner & group "majordom" and mode 664.
+
+5.  Now you can "su" to the new "majordom" account.  (Most of the rest
+    of the installation doesn't need to be done as root.)
+
+6.  Get a Majordomo distribution file from ftp.greatcircle.com in the
+    pub/majordomo directory.  While you're there, get Brent's paper
+    about Majordomo (majordomo.paper.ps.Z, in compressed PostScript
+    format).  It's titled "Majordomo: How I Manage 17 Mailing Lists
+    Without Answering `-request' Mail".  The paper has an interesting
+    overview of how and why he wrote Majordomo, as well as an
+    introduction to Majordomo for users and administrators.  The
+    Majordomo version it covers is fairly out of date now.  To find out
+    about any new documentation, read the "Changes" file in the
+    Majordomo distribution.
+
+    In the directory /pub/majordomo/archive are monthly archive files
+    of all the articles posted to the majordomo mailing lists.  They're
+    worth browsing through someday in your copious free time.  There's
+    lots of information that we don't have the room to cover in this
+    book.
+
+7.  Extract the Majordomo distribution file into whatever directory you
+    chose.
+
+    Each Perl script starts with a line that contains the pathname of
+    the Perl interpreter on Brent's system.  If your Perl is in a
+    different place, you'll need to edit all the script files that
+    start with "#!" and fix that line.  For instance, if your Perl
+    executable is /stuff/bin/perl, change the first lines to look
+    like:
+
+       #!/stuff/bin/perl
+
+    Note that the version of "resend" with Majordomo 1.62 (and probably
+    others) has a "-U" option at the end of the "#!" line.  Don't
+    forget it.
+
+8.  You might want to look through each program for an idea of how it
+    works.  At least, read the "README", "Description", and
+    "resend.README" files.  The "Changes" file also explains some
+    things that the other files don't.  The Doc/samples directory has
+    samples of files for different list configurations.
+
+9.  Configure Majordomo.  Copy the sample.cf to become the majordomo.cf
+    file.  Edit majordomo.cf to set the locations of directories and
+    files.  This is Perl code, so each line (except comments) has to
+    end with a semicolon (;):
+
+       # $whereami -- Hostname to advertise for machine I'm running on:
+       $whereami = "ora.com";
+       
+       # $whoami -- Address for users to send my requests:
+       $whoami = "Majordomo@$whereami";
+       
+       # $whoami_owner -- owner of the above, in case of problems:
+       $whoami_owner = "Owner-Majordomo@$whereami";
+       
+       # $homedir -- Directory with my extra .pl files, like
+       # majordomo.pl, shlock.pl, and majordomo_version.pl:
+       $homedir = "/usr/local/majordomo/bin";
+       
+       # $listdir -- Directory with files for mailing lists:
+       $listdir = "/usr/local/majordomo/lists";
+       
+       # $log -- Full pathname of the log file I write:
+       $log = "/usr/local/majordomo/Log";
+       
+       # $mailer -- Program and arguments I use to send mail:
+       $mailer = "/usr/lib/sendmail -oi -f\$sender \$to";
+       
+       # Majordomo will look for "get" and "index" files related to $list
+       # in directory "$filedir/$list$filedir_suffix":
+       $filedir = "/usr/local/majordomo/archive";
+       $filedir_suffix = "";
+       
+       # $index_command -- Command for processing an "index" request.
+       # Majordomo does chdir("$filedir/$list$filedir_suffix") first.
+       # This one makes a little heading without permissions, links,
+       # or owner name.  This won't work if you use ls -lRL instead:
+       $index_command = "/bin/ls -lL | \\
+           /bin/sed -e 's/^......................//' \\
+           -e '1s/.*/     SIZE    DATE      NAME/'"
+       
+       # If you want to use FTPMAIL, rather than local access, for
+       # file transfer and access, define the following:
+       #   $ftpmail_address = "ftpmail@decwrl.dec.com";
+       #   $ftpmail_location = "FTP.$whereami";
+
+    The sendmail "-f\$sender" sets the message's "envelope sender"
+    address.  The backslash (\) makes sure the Perl variable $sender,
+    which is set by "resend", isn't interpreted until the mail is
+    sent.  In the same way, the "\$to" is replaced with the destination
+    address.  The "-oi" option tells sendmail not to quit if it sees a
+    line with just a dot (.).  If you have big lists or a busy system,
+    you might also add "-odq" to queue all messages instead of trying
+    to deliver them immediately.
+
+    Of course, if you don't have sendmail, use a command for sending mail
+    with your system's MTA.
+
+    I've also hacked the $index_command to make a simpler archive index
+    than the default "ls -lRL" command does.  This makes the output
+    more user-friendly for users who don't know UNIX, but it won't work
+    if a list's archive has sub-archives (subdirectories).
+
+10. Majordomo looks for its configuration file in /etc/majordomo.cf
+    unless you set the W_MAJORDOMO_CF variable for "wrapper" that makes
+    it look somewhere else.  My personal preference is to keep master
+    copies of my local files off of /etc, so I made a symbolic link
+    from /etc/majordomo.cf to /usr/local/majordomo/majordomo.cf.
+
+11. Install the "wrapper" program.  It lets the majordomo script run as
+    a "trusted user."  On non-POSIX systems, that's normally the user
+    "daemon"; on POSIX systems, it's "root".
+
+    Edit the Makefile and set the "make" macros W_BIN and
+    W_MAJORDOMO_CF for "wrapper".  W_BIN should point to the same
+    directory as $homedir in the majordomo.cf file.  Give
+    W_MAJORDOMO_CF the absolute pathname of the majordomo.cf file.
+    Also check W_PATH, W_HOME, W_SHELL; they set the environment
+    variables PATH, HOME, and SHELL, respectively, during "wrapper".
+    If you're using a POSIX system, remove the comment characters from
+    the front of the POSIX section and add them to the non-POSIX
+    section.
+
+    Some day the "wrapper" program may be eliminated.  If you're using
+    a version of Majordomo newer than version 1.90 and "wrapper" is
+    missing, see the "Changes" file.
+
+    Go back to the superuser account.  (If your shell has job control
+    and the "suspend" command, that's an easy way to drop back to
+    "root".  [That's assuming you originally typed "su majordom" from
+    the "root" account.] When you're ready to be "majordom" again, just
+    use "fg".)  Run "make" to build the "wrapper" program.  If you
+    decided to install "wrapper" somewhere other than the current
+    directory, run "make install".
+
+12. You may want to copy or move the online manual pages from the
+    Doc/man directory to your system's online manual page area.
+
+13. While you're the superuser, edit the MTA alias file to add aliases
+    like these:
+
+       owner-owner: postmaster
+       #
+       # Majordomo
+       #
+       majordomo: "|/usr/local/majordomo/bin/wrapper majordomo"
+       majordom: owner-majordomo
+       majordomo-owner: jerry
+       owner-majordomo: majordomo-owner
+
+    (There's a sample MMDF aliases file in the section "For MMDF
+    Systems", below.)
+
+    If your "aliases" file doesn't have an "owner-owner" alias, we
+    recommend it (actually, the Nutshell Handbook "sendmail" does).
+    Using this special alias will help to find any problems with the
+    zillions of other "owner-xxx" aliases that you'll be adding as you
+    configure Majordomo lists.  Errors in any "owner-" alias will go to
+    the system postmaster.
+
+    The setup of the similar-looking "xxx-owner" and "owner-xxx"
+    aliases is important if you use sendmail version 8.  The setup
+    above makes the envelope sender address "majordomo-owner" instead
+    of a person's address (here, "jerry").  See the section of Chapter
+    2 called "Envelope Sender in Sendmail Version 8".
+
+    Notice that the "majordomo" alias doesn't have the absolute
+    pathname of the majordomo program.  For security, the absolute
+    pathname is hardcoded into the "wrapper" binary.  If you move the
+    majordomo program, the alias won't work until you recompile
+    "wrapper".
+
+    Be sure that mail sent to the "majordom" user is routed somewhere.
+    A sendmail alias could route it to "majordomo" (a good choice if
+    you'll be getting much mail from systems that truncate mail
+    addresses to an 8-character length).  The alias above routes
+    "majordom" mail to the person in charge of Majordomo.  You could
+    also use a program like "canned_reply" (see Chapter 1).
+
+    If this sendmail alias file is shared by more than one host, and
+    they won't all be running the same Majordomo setup (which isn't
+    likely), you've got some configuring to do.  The section of Chapter
+    2 called "Problems with Your Local Network" has some tips.
+
+    If your system needs it, run "newaliases" to rebuild the alias
+    database.
+
+14. You or list owners may want to have a "bounces" mailing list set
+    up.  If you do, this is a good time to add the aliases and make the
+    list files.  (See the section below named "Setting Up Lists".)
+
+15. I edited the "request-answer" program to change the mail message
+    it sends.
+    Now the message also explains other e-mail addresses at our company.
+
+Before you turn your users and list owners loose on the system, set up
+at least one list and test your system.  The section below explains how
+to do that.
+
+
+SETTING UP LISTS
+
+Once you've got Majordomo installed, you'll want to create one or more
+mailing lists.  The following sections provide a step-by-step procedure
+for creating a mailing list, how to make a list moderated, and how to
+test the list to make sure it's working.
+
+
+Creating a New List
+
+New lists are created by adding files to the $listdir directory (named
+in majordomo.cf) and by making entries in your MTA aliases file.  Here
+are the steps:
+
+1.  Pick a name for the list: letters, digits, underbars (_), or dashes
+    (-) only.  To avoid confusing users, it's a good idea not to use
+    both underbars and dashes for your system's listnames.  Choose one
+    or the other, then use it consistently.
+
+2.  Decide who'll own the list.  The address of this person (or
+    persons) will go on the "listname-approval" and "listname-owner"
+    aliases for the list.
+
+3.  The owner should pick the subscription approval password.  Store it
+    in the "listname.passwd" file in the $listdir directory.  Use
+    "chmod" to set the file mode to 660.  As for all other Majordomo
+    files, be sure that the group owner is "majordom".
+
+4.  The owner should write a description of the list to be mailed out
+    for "info" requests and for new subscriptions.  Store the
+    description in the "listname.info" file in the $listdir directory.
+    (Hint:  a good description in the "info" file will save you time by
+    avoiding questions later.)  Set the file mode to 664.
+
+5.  If you want the list to be archived, create a file in the archive
+    area.  Optionally, create an archive directory for the list, in the
+    location specified by the $filedir and $filedir_suffix variables.
+    Set the file mode to 664.
+
+6.  Set the subscription policy.  If the list owner wants all requests
+    to be approved automatically, including requests by any user to
+    subscribe or unsubscribe any other user, create an empty file named
+    "listname.auto" in the $listdir directory.  The list owner will
+    still be notified when people subscribe or unsubscribe but won't
+    have to approve them.
+
+    If there isn't a "listname.auto" file, non-routine subscriptions
+    (requests by any user to subscribe or unsubscribe any other user)
+    will be sent to the list owner.  Routine subscriptions will be
+    approved automatically (unless there's a "listname.closed" file;
+    see below).
+
+    A "closed list" requires the list owner to approve all
+    subscriptions.  To close a list, create an empty file named
+    "listname.closed" in the "lists" directory.  To open the list,
+    remove that file.
+
+7.  Decide whether you want to include comments in the subscriber
+    list.  Normally, Majordomo stores the complete address it gets for
+    each subscriber.  That includes comments like "Jerry Peek" or
+    "(Phone 123-4567, FAX 234-5678)".  These can help you (and other
+    people) find subscribers when the e-mail address isn't enough.  If
+    you create an empty file named "listname.strip" in the $listdir
+    directory, comments won't be stored with addresses.
+
+8.  By default, anyone (even non-subscribers) can use the commands
+    "who", "which", "index", and "get" on a list.  If you create an
+    empty file named "listname.private" in the $listdir directory, only
+    members of the list can use those commands.
+
+9.  Make a file in the $listdir directory to hold the list's
+    subscribers.  The filename is the same as the listname.
+
+10. Set up list distribution.  The "resend" script, run by the
+    "wrapper" program, receives and distributes mail for each list.
+    (Strictly speaking, you don't need "resend" for a simple list.  You
+    can let majordomo manage the subscriber list and use a simple
+    sendmail alias to distribute messages.  But unless you have a
+    problem with "resend", its features will usually be a help.)
+
+    The table below explains the "resend" options you can use; the only
+    required options are "-l" (the list name) and "-h" (the host name). 
+    Pick the options and settings you'll use; there are examples below. 
+    You should probably check the "resend.README" file for any changes
+    in this list of options.
+
+    - "-C config-file" names an alternate configuration file that only
+      "resend" uses.  The default is the main majordomo.cf file.
+
+      If you use the "-C" option, it MUST BE THE FIRST OPTION given.
+
+    - "-l list-name", which is required, gives the name of the mailing
+      list.
+
+    - "-h host-name", which is required, gives the fully-qualified
+      domain name of the computer running Majordomo.
+
+    - "-A" makes the list moderated.  To create a moderated list, see
+      the section below called "Making a Moderated List".  (Use the
+      "-a" option, too.)  Also see the "-I" option.
+
+    - "-a password" sets the approval password for moderated lists
+      and other messages that have been rejected for some reason.
+      (If the list will be moderated, use the "-A" option, too.)
+
+      If the argument starts with a slash (/), it's used as the
+      pathname to a file that contains the password.  If your MTA has
+      an SMTP VRFY command, use a pathname for security; see the
+      section "Making a Moderated List".
+
+    - "-d" sets debugging:  instead of running the commands, "resend"
+      writes the command lines it would run to its standard output.
+
+    - "-f from-address" is used as the "envelope sender" address for
+      messages on the list.  (See the part of Chapter 1 called "`From '
+      vs. `From:'".)  It's also the "approval address" used for any
+      message that "resend" needs to bounce to the list owner.  If you
+      don't give "-f", the default address is "listname-request".
+
+    - "-I filenames" is used to restrict who can post to a list.  The
+      "filenames" argument is a list of one or more files, separated
+      by colons (:), in the $listdir directory.  The files contain
+      addresses that are allowed to send messages to the list.  If the
+      message doesn't have a valid "Approved:" header and the sender's
+      "From:" address isn't on this list, the message will be bounced
+      to the list owner.
+
+      For example, a company might want a general announcements list
+      that only a few employees should send messages to.  Instead of
+      making the list moderated (which would add overhead) they can use
+      the name of a file with the addresses of people who are approved
+      to send mail to the list.  This isn't very secure because any
+      user can forge a "From:" address easily.  Still, this is an easy
+      way to stop messages (replies, for example) from being sent to
+      the list accidentally.  It also doesn't require all the people
+      who post to know the article approval password.
+
+    - "-m sendmail-flags" is the place to store any sendmail flags you
+      want used when mail is sent to the list.  For example, "-m -odq"
+      will queue messages instead of trying to deliver them
+      immediately.  To use more than one sendmail option, put single
+      quotes around the options--for example, "-m '-odq -oi'".
+
+    - "-M maximum-message-length" is the maximum message size, in
+      bytes, that "resend" will send to the list.  Bigger messages are
+      forwarded to the list owner for approval.
+
+    - "-p precedence" will add a "Precedence: precedence" header
+      component to messages.  Many lists use "-p bulk".  (See the
+      section of Chapter 1 called "Bounced Mail".)
+
+    - "-R" will delete "Received:" header components on incoming
+      messages.
+
+    - "-r reply-to" will add a "Reply-To: reply-to" header component.
+
+    - "-s" enables "administrivia" checks.  With this option, "resend"
+      does two checks of each message.  If the message's subject has a
+      word that ends in "subscribe" or "unsubscribe", upper or lower
+      case, it will be bounced.  Also, if the first five lines of the
+      message body have the words "add me", "delete me", "subscribe",
+      "sub", "unsubscribe", or "unsub", upper or lower case, anywhere
+      in those lines, the message will be bounced.
+
+      The list owner can bypass the administrivia checks by adding a
+      valid "Approved:" header and re-sending the message to the list.
+
+11. Add list aliases to the sendmail (or other MTA) aliases file.  Here
+    are some for an unmoderated, archived list named "sample" on the
+    host foo.com.au:
+
+       #
+       # Sample mailing list
+       #
+       owner-sample: sample-owner
+       sample: "|/usr/local/majordomo/bin/wrapper resend -p bulk -M 10000
+           -R -l Sample -f Sample-Owner -h foo.com.au -s sample-outgoing"
+       sample-owner: jerry
+       sample-approval: sample-owner
+       sample-outgoing:
+           :include:/usr/local/majordomo/lists/sample, sample-archive
+       owner-sample-outgoing: sample-owner
+       sample-archive: /usr/local/majordomo/archive/sample/sample
+       owner-sample-archive: sample-owner
+       sample-request:
+           "|/usr/local/majordomo/bin/wrapper request-answer sample"
+       owner-sample-request: sample-owner
+
+    (There's a sample MMDF aliases file in the section "For MMDF
+    Systems", below.)
+
+    The aliases are:
+
+    - "listname-owner" (and "owner-listname", which points to it) is
+      the list owner, the person (or people) in charge of the list.  A
+      lot of the other aliases can point to this one.
+
+      As Chapter 2 explains, sendmail uses the "owner-xxx" aliases for
+      errors.  Majordomo uses the "xxx-owner" aliases.  (Actually, an
+      "xxx-owner" alias isn't used by Majordomo itself--but aliases
+      that Majordomo uses are set up to point to "xxx-owner".)
+
+    - "listname" runs the "wrapper" program to set the correct
+      permissions.  Then "wrapper" starts "resend" to send the message
+      to the list.  (Brent wants to get rid of "wrapper" some day.)
+
+      This is where the "resend" options are set (see the list above).
+      The alias ends with the distribution address (here,
+      "sample-outgoing").
+
+      Here's a useful trick from Brent Chapman.  Some versions of
+      sendmail have a 256-character length limit for aliases.  A
+      "resend" line with a lot of arguments can easily go over that
+      limit.  To solve this, you can put all the "resend" arguments in
+      a file called "listname.resend".  Set up the alias with
+      backquotes (grave accents) and "cat"--like this:
+
+         sample: "|/usr/local/majordomo/bin/wrapper resend
+            `/bin/cat /usr/local/majordomo/lists/sample.resend`
+            sample-outgoing"
+
+      When sendmail interprets the alias, it will be fairly short.  The
+      shell will run "cat"--and replace the backquoted string with the
+      "sample.resend" file contents--after sendmail has finished
+      interpreting the alias.
+
+      Another advantage of this is that the majordomo administrator can
+      change the list's "resend" configuration without editing the
+      system aliases file.
+
+    - "listname-approval" is the person (or people) who approves
+      subscriptions to closed lists, subscriptions or unsubscriptions
+      at a different address, and mailings to moderated lists.  This
+      can usually point to "listname-owner".
+
+    - "listname-outgoing" is the actual list of people subscribed to
+      the list.  The sendmail ":include:" directive reads the
+      subscribers list at the time a message is sent.  If the list is
+      archived, add the name of the archive alias (like
+      "listname-archive") too.
+
+    - Optional (I recommend it): By convention, many Internet mailing
+      lists have a subscription address of "listname-request".
+      Although your list doesn't use that address (it uses
+      "majordomo"), the "request-answer" program can answer mail sent
+      to that address.  You may want to edit the "request-answer"
+      program to send a different message--for example, to give
+      information about places to get help and information (local
+      addresses, phone numbers, etc.) at your company.
+
+    - Optional: The "new-list" script can answer mail sent to the list
+      for the first few days.  The message asks people to wait to post
+      messages for a few days until most subscribers have joined the
+      list.  "new-list" also returns the sender's message.
+
+      To install "new-list", "comment out" the "listname" alias and put
+      "new-list" in its place temporarily:
+
+         # sample: "|/usr/local/majordomo/bin/wrapper resend -p bulk -M 10000
+         #     -R -l Sample -f Sample-Owner -h foo.com.au -s sample-outgoing"
+         sample: "|/usr/local/majordomo/bin/wrapper new-list Sample"
+
+      After a few days, the system administrator should install the
+      permanent list alias.  The owner should send an announcement that
+      the list is "open for business."
+
+    Most of the alias names starting with "owner-" tell sendmail where
+    to send errors caused by the corresponding alias.  For example, if
+    there's a problem with the "sample-archive" alias, sendmail will
+    complain to "owner-sample-archive".  These "owner-" aliases will
+    usually be easier to maintain if you point them to an overall alias
+    (like "owner-sample" or "postmaster") instead of a particular user
+    (like "jerry").
+
+    As before, if this sendmail alias file is shared by more than one
+    host, and they won't all be running the same Majordomo setup, there
+    are tips in the section of Chapter 2 called "Problems with Your
+    Local Network".
+
+12. Make sure everything is owned by user "majordom", group "majordom",
+    and writable by both owner and group (that is, mode 664 for files
+    and mode 775 for directories).  In a lot of cases, files and
+    directories don't need world access; you can use modes 660 and
+    770.  But check and test carefully; it's better to leave everything
+    world-readable unless you're sure things work okay without it.
+
+    If you need to be very careful about permissions, think about how
+    each file will be read and written.  Many files are accessed by
+    programs invoked from "wrapper"; those files only need permission
+    for access by "wrapper"'s UID and GID.  Files that will be written
+    by users logged on interactively (like the list administrator) may
+    also need write permission for the "majordom" group.  Files written
+    directly from a sendmail alias (the list archive files) probably
+    need world write permission because of the variety of UIDs and GIDs
+    that sendmail may run as.
+
+
+For MMDF Systems
+
+The examples in the steps above are for systems with the sendmail MTA.
+Here are examples for systems that use the MMDF MTA.  (Thanks to Morna
+Findlay for these examples.)  The leading name "majordom|" means the
+"majordomo" and "sample" aliases will run as the user "majordom".  This
+is from the MMDF aliases file:
+
+   majordomo: "majordom|/usr/local/majordomo/bin/wrapper majordomo"
+   owner-majordomo: jerry
+   majordomo-owner: jerry
+
+Now, for the sample mailing list, here are entries from the MMDF
+"lists" file.  In MMDF, mailing lists have their own channel:
+
+   sample:             sample-outbound@list-channel
+   sample-outbound:    :include:/usr/local/majordomo/lists/sample
+   sample-request:     "majordom|/usr/local/majordomo/bin/wrapper request-recording sample"
+   sample-approval:    jerry
+   owner-sample:       jerry
+
+
+Making a Moderated List
+
+A list owner may want to approve every message before it goes to the
+list.  The list might distribute official company statements, or begin
+to carry lots of inappropriate messages and "noise" that subscribers
+don't want to see.  One common reason is that people accidentally send
+subscription requests to the list itself instead of to the "majordomo"
+address.  Having one person filter these out can potentially save
+thousands of people from wasting time on them.  (Also see the "resend
+-s" and "-I" options.)
+
+To make a list moderated, add the options "-A" and "-a password" to the
+list's alias (its "resend" command) in your system alias file.  The
+argument to "-a password" is the password that the list owner adds to a
+message header to approve an article:
+
+   Approved: BigSecret
+
+The revised list entry in the sendmail aliases file would look like:
+
+   sample: "|/usr/local/majordomo/bin/wrapper resend -p bulk
+       -A -a BigSecret
+       -M 10000 -R -l Sample -f Sample-Owner
+       -h foo.com.au -s sample-outgoing"
+
+Like other Majordomo features, this isn't especially secure.  If your
+system's sendmail has a VRFY command, anyone can find the list
+password.  Also, the list owners can't change their article approval
+password unless you (the system administrator) edit the system alias
+file.  An easy fix is to give the full pathname of a file, starting
+with a slash (/), as the argument to the "-a" option.  In the example
+below, "resend" will read in the subscription approval password (from
+the list's "sample.passwd" file):
+
+   sample: "|/usr/local/majordomo/bin/wrapper resend -p bulk
+       -A -a /usr/local/majordomo/lists/sample.passwd
+       -M 10000 -R -l Sample -f Sample-Owner
+       -h foo.com.au -s sample-outgoing"
+
+Of course, you could use a different password file (instead of the list
+subscription password).  The advantage of using the list subscription
+password for article approval is that the list owner can change both
+passwords by e-mail.
+
+**NOTE** As mentioned before, the "-a" password isn't just used for
+moderated lists.  It's used to approve any message that "resend"
+bounces because of things like administrivia ("-s" flag) and length
+("-M" flag).
+
+To find out how to approve a message, see the section "Managing the
+Lists", below.
+
+
+Testing Your Installation
+
+You should have set up at least one list by now.  A nice way to test
+majordomo is with the sendmail "-v" ("verbose") switch; it shows you
+what's happening.
+
+In case something is set up wrong, it's a good idea to have a superuser
+shell ready to do some fast cleanup.
+
+1. Send a test "help" message to majordomo.  I found a permission
+   problem right away:
+
+      % echo help | /usr/lib/sendmail -v majordomo
+      majordomo... aliased to  "|/usr/local/majordomo/bin/wrapper majordomo"
+      "|/usr/local/majordomo/bin/wrapper majordomo"... Connecting to  via prog...
+      shlock: open(">/usr/local/majordomo/shlock4344"): Permission denied
+         at /usr/local/majordomo/bin/shlock.pl line 131, <> line 1.
+      shlock: open(">/usr/local/majordomo/shlock4344"): Permission denied
+         at /usr/local/majordomo/bin/shlock.pl line 131, <> line 1.
+      (error message repeated every second or so)
+
+   Because I had a superuser shell ready, it was easy to kill the perl
+   process running on that terminal.  I deleted the queued message from
+   the /usr/spool/mqueue directory, fixed the permission problem (the
+   home directory wasn't group-writable), and tried again.  (One of
+   this book's reviewers told me that his system required all files be
+   owned by "daemon".  He also had to make "daemon" the W_UID in his
+   Makefile.  I don't see why, but there are a lot of systems out
+   there; this tip might help you too.)
+
+   Majordomo sent me a help message:
+
+      From Owner-Majordomo@ora.com Mon Aug  2 11:36:15 1993
+      Date: Mon, 2 Aug 93 11:36:13 PDT
+      To: jerry
+      From: Majordomo@ora.com
+      Subject: Majordomo results
+      Reply-To: Majordomo@ora.com
+      
+      >>>> help
+         ...
+      Commands should be sent in the body of an email message to
+      "Majordomo@ora.com".
+
+      Commands in the "Subject:" line NOT processed.
+
+      If you have any questions or problems, please contact
+      "Owner-Majordomo@ora.com".
+
+   Check the addresses in that message to be sure they're right.
+
+2. I tested the "request-answer" program by mailing to "sample-request"
+   (my test list was named "sample"):
+
+      % echo help | /usr/lib/sendmail -v sample-request
+           ...
+
+   Again, I checked the addresses in the returned message.  In this
+   message and the one before, the envelope sender (shown in the "From
+   " or "Return-Path:" lines) should be one of the Majordomo aliases:
+
+      From sample-request Mon Aug  2 11:41:26 1993
+      Return-Path: <sample-request>
+
+   That's because the "wrapper" program runs as "daemon" (or, on POSIX
+   systems, as "root")--and those users are on the trusted user list in
+   the sendmail configuration file (/etc/sendmail.cf):
+
+      T root daemon uucp
+
+   The trusted user settings aren't something to experiment with.  If
+   you're having trouble getting the right envelope sender address,
+   check a reference for your MTA.  (The Nutshell Handbook "sendmail"
+   should be a help if you use that MTA.)
+
+3. Next, be sure that your system's MTA is configured right to send
+   mail across a network.  Go to another account on another computer,
+   send mail to "majordomo", then check the return addresses in the
+   message headers.  You might ask a friend at another company to do
+   the same thing.
+
+4. Subscribe to the sample list.  (I did it from another computer.)
+
+   You should get a welcome message and a "Majordomo results" message:
+
+      From Owner-Majordomo@ora.com Mon Aug  2 15:22:28 1993
+      Date: Mon, 2 Aug 93 12:24:42 PDT
+      To: jerry@foobar.ora.com
+      From: Majordomo@ora.com
+      Subject: Welcome to sample
+      Reply-To: Majordomo@ora.com
+
+      Welcome to the sample mailing list!
+
+      If you ever want to remove yourself from this mailing list, send the
+      following command in email to "Majordomo@ora.com":
+
+          unsubscribe sample jerry@foobar.ora.com (Jerry Peek)
+
+      Here's the general information for the list you've subscribed to, in
+      case you don't already have it:
+
+              ...you should get a copy of the sample.info file here...
+
+      From Owner-Majordomo@ora.com Mon Aug  2 15:22:30 1993
+      Date: Mon, 2 Aug 93 12:24:41 PDT
+      To: jerry@foobar.ora.com
+      From: Majordomo@ora.com
+      Subject: Majordomo results
+      Reply-To: Majordomo@ora.com
+
+      >>>> subscribe sample
+      Succeeded.
+
+5. Look at the log file; be sure these transactions are being logged.
+
+6. Send a message to the sample list:
+
+      % /usr/lib/sendmail -v sample@ora.com
+      Subject: test message to sample list; will this make a log file?
+
+      Hi, folks.
+      ^D
+          ...watch the transaction...
+
+   And look at the message sent to the list.
+
+      From Sample-Owner@ora.com Mon Aug  2 15:27:12 1993
+      From: Jerry Peek <jerry@foobar.ora.com>
+      Date: Mon, 2 Aug 1993 12:26:58 EDT
+      To: sample@ora.com
+      Subject: test message to sample list; will this make a log file?
+      Sender: Sample-Owner@ora.com
+      Precedence: bulk
+
+      Hi, folks.
+
+   Be sure that the message is going into the list archive file, if
+   any.
+
+   If you're planning to set up the "new-list" script, "comment out"
+   the list's current "resend" alias (add a "#" before it) and set up
+   "new-list".  Test it to be sure you get a reply.
+
+7. If the list is closed, private, or moderated, check whether those
+   features are actually working.  Test the list owner's account to be
+   sure mail gets there--including mail about the routine subscriptions
+   and unsubscriptions.
+
+   Try sending a message from some other account to unsubscribe you.
+   Your request should be forwarded to the list owner unless you
+   created a "listname.auto" file.
+
+8. Try the "newinfo" and "passwd" commands from the list owner
+   account.  (See "Majordomo Commands for List Owners", below.) The
+   corresponding files in the list directory should be updated.
+
+9. If you've made a list archive, there should be a file in it by now.
+   Get a listing of the archive and a copy of the file:
+
+      % /usr/lib/sendmail -v majordomo
+      majordomo... aliased to  "|/usr/local/majordomo/bin/wrapper majordomo"
+      index sample
+      get sample archive
+      ^D
+      "|/usr/local/majordomo/bin/wrapper majordomo"... Connecting to  via prog...
+      "|/usr/local/majordomo/bin/wrapper majordomo"... sent.
+
+   If you didn't see any errors, you should get two mail messages.  One
+   is a copy of the file; the other holds the results of the majordomo
+   session:
+
+      Return-Path: <Owner-Majordomo@ora.com>
+      To: jerry
+      From: Majordomo@ora.com
+      Subject: Majordomo file: list 'sample' file 'archive'
+      Reply-To: Majordomo@ora.com
+
+      --
+
+      >From Sample-Owner  Mon Aug  2 12:37:46 1993
+      Received: by ora.com (5.65c/Spike-2.1)
+              id AA05037; Mon, 2 Aug 1993 12:35:17 -0700
+
+          ...copy of messages from the list...
+
+      Return-Path: <Owner-Majordomo@ora.com>
+      To: jerry
+      From: Majordomo@ora.com
+      Subject: Majordomo results
+      Reply-To: Majordomo@ora.com
+
+      --
+
+      >>>> index sample
+           SIZE    DATE      NAME
+           5383 Sep  6 01:58 archive
+      >>>> get sample archive
+      List 'sample' file 'archive'
+      is being sent as a separate message.
+
+
+MANAGING THE LISTS
+
+Majordomo makes day-to-day operation of a mailing list easier, but
+there are still things to do.  If your mailing lists are open (anyone
+can subscribe) and unmoderated (anyone can post), you'll get fewer
+messages, but you should still expect some.
+
+When mail (a subscription, unsubscription, or an article intended for a
+moderated list) needs approval, majordomo sends the message to the list
+owner(s).  Any list owner (and in fact, anyone who knows the list
+password) can send an approval message back to Majordomo to approve the
+request.
+
+A "list owner" is the person (or people) listed on the
+"listname-approval" alias in your system aliases file.  (For sendmail,
+that filename is usually /usr/lib/aliases or /etc/aliases.)
+
+Note that Majordomo lets you put different people on the
+"listname-approval" and "listname-owner" aliases.  If you split those
+duties between two different people, keep that in mind as you read the
+sections below.  I've assumed that all list messages needing action go
+to a single "list owner."
+
+
+A List Owner's Account
+
+All a list owner needs is to be able to send and receive e-mail.  The
+owner doesn't need to have login access to the system where the list is
+handled.
+
+The list owner doesn't even need to be on a UNIX system, although
+majordomo comes with some UNIX scripts that make life easier for the
+list owner.
+
+
+Majordomo Commands for List Owners
+
+The requests for users can also be used by list owners.  But there are
+three more password-protected commands just for list owners.  These
+aren't mentioned in Majordomo's help file.  If the owner doesn't have
+an account on the machine where Majordomo runs, these commands allow
+routine housekeeping via e-mail:
+
+- approve password subscribe/unsubscribe list address"
+
+  Subscribe or unsubscribe someone from the list "list".  For
+  example:
+
+     approve !BooM! subscribe donut-makers Bob Baker <rpbaker@sandia.gov>
+     approve !BooM! unsubscribe donut-makers john.dough@bakers.org
+
+- passwd list old-password new-password
+
+  Change the subscription approval password for "list" from
+  "old-password" to "new-password".  Remember that this password is
+  stored, unencrypted, on the computer running Majordomo.  Don't use
+  your login password!
+
+- newinfo list password
+
+  Change the text in the "listname.info" file (the text a user
+  receives when they mail an "info" command or subscribe to the
+  list).  The text is taken from the rest of the mail message until a
+  line with the three upper-case letters "EOF" at the start.
+
+  Majordomo version 1.90, which should be out by the time this book is
+  printed, has a few new commands for list owners:  (Thanks to John
+  Rouillard for this summary.)
+
+- config list password
+
+  E-mails a copy of the configuration file for "list" to the owner.
+  The owner can edit the configuration file and send it back with
+  "newconfig".
+
+     newconfig list password
+      ...config file contents here...
+     EOF
+
+  The "newconfig" command installs a new configuration file for
+  "list".  After you type the "newconfig" command, the rest of the
+  mail message should be a copy of the new configuration file.
+
+- writeconfig list password
+
+  Rewrites the configuration file into standard form--including all
+  documentation in the configuration file.
+
+- mkdigest list password
+
+  Force a digest to be generated for "list".
+
+
+Approving Subscriptions and Moderating with "approve"
+
+The list owner will receive three types of mail messages from
+Majordomo:
+
+- For subscriptions that need approval, you'll get a message with
+  APPROVE in the subject line.  For closed lists all subscriptions
+  need approval.  For open lists, approval is necessary only for
+  subscriptions where the subscriber specifies an e-mail address other
+  than their own.
+
+- For moderated lists, or for other messages that "resend" rejects,
+  you'll get a message with BOUNCE in the subject line.  The subject
+  will tell you the reason for the bounce, and the body will contain
+  the whole bounced message.  You decide whether this message is
+  appropriate to be sent to all the subscribers.
+
+- Reports of successful subscriptions and unsubscriptions.
+
+Majordomo includes "approve", a Perl script for making these chores
+easier.  For subscription requests, "approve" sends an e-mail message
+back to "majordomo" indicating that the subscription should be
+accepted.  For messages submitted to moderated lists, "approve" adds an
+"Approved:" header and re-sends the message to the list.  The next two
+sections show how to do these things manually in case the list owner is
+on a system where "approve" (or Perl) can't run.  They also show the
+e-mail messages that fly back and forth.
+
+"approve" can be run either on the machine where majordomo is running
+or on a remote machine where the list owner is managing the list by
+e-mail.  The "approve" script assumes that the Perl interpreter is in
+/usr/local/bin/perl.  If Perl is somewhere else, the first line of the
+"approve" script should be edited to the path for that system:
+
+   #! /usr/local/bin/perl
+
+"approve" uses a file named ".majordomo" (the name starts with a dot)
+in the owner's home directory.  It has an entry for each of the owner's
+lists:  the list name, list password and e-mail address of its
+Majordomo server.  There's a tab character (NOT space characters)
+between the three fields in each line.  For example, this is the
+".majordomo" file for the owner of the "donut-makers" and
+"mud-wrestlers" mailing lists:
+
+   donut-makers    !BooM!  majordomo@bakers.org
+   mud-wrestlers   GoJoan  majordomo@foo.bar.com
+
+For security, it's a good idea to protect the file from other users.
+Use a command like "chmod 600 .majordomo".
+
+To approve a request, feed the original approval-request message from
+Majordomo to the "approve" script.  Messages can be saved in separate
+files, one per message, and named on the command line:
+
+   % approve file1 file2 etc.
+
+Messages can also be fed to the standard input of "approve".  For
+example, in MH mail, where the "show" command displays a message:
+
+   % scan 32
+     32+ 09/05 Majordomo@bakers.o APPROVE donut-makers<<-- postmaster@yu
+   % show | approve
+
+Or in "mush", the Mail User's Shell:
+
+      ...
+   > 32   Majordomo@bakers.org  Sep  5, (29/804) "APPROVE donut-makers"
+      ...
+   Msg 32 of 78: pipe approve
+
+The command in the Berkeley "mail" program is simply a vertical bar
+(|).  (For other mailers, check your documentation or help screen.)
+
+
+Approving Subscriptions without "approve"
+
+It's possible that a list owner may be using a PC or some other system
+where the "approve" script won't work.  In that case, everything that
+"approve" does can be done manually.  This section and the next may
+also be useful for those who want to know what "approve" does in more
+detail.
+
+If someone sends a non-routine subscription to "majordomo", the server
+sends a message to the list owner.  There are two kinds of non-routine
+subscription.  One is when the person sends a subscribe/unsubscribe
+command with a different e-mail address than their own.  The other is
+if the list is "closed"--that is, when the owner must approve all new
+subscriptions.
+
+For example, the system postmaster at a bakery might want to set up a
+list exploder (see Chapter 2) for the "donut-makers" mailing list.  She
+adds an exploder named donut-makers-dist@yummybake.com and sends this
+mail to the Majordomo server:
+
+   From: postmaster@yummybake.com
+   To: majordomo@bakers.org
+
+   subscribe donut-makers donut-makers-dist@yummybake.com
+
+When Majordomo gets the message, it sees that the subscription address
+isn't the same as the sender's address.  So it sends the following mail
+message to the list owner:
+
+   From Owner-Majordomo@bakers.org Sun Sep  5 08:56:09 1993
+   To: donut-makers-approval
+   From: Majordomo@bakers.org
+   Subject: APPROVE donut-makers
+   Reply-To: Majordomo@bakers.org
+
+   --
+   postmaster@yummybake.com requests that you approve the following:
+
+       subscribe donut-makers donut-makers-dist@yummybake.com
+
+   If you approve, please send a message such as the following back to
+   Majordomo@bakers.org (with the appropriate PASSWORD filled in, of course):
+
+       approve PASSWORD subscribe donut-makers donut-makers-dist@yummybake.com
+
+   If you disapprove, do nothing.  Thanks!
+
+   Majordomo@bakers.org
+
+If an owner doesn't want to apprive the subscription request, I suggest
+that he not just "do nothing." If a subscription is rejected, it's a
+good idea to reply and explain why.  Otherwise, the subscriber will
+probably write to ask because she already got a message like this:
+
+   From Owner-Majordomo@bakers.org Sun Sep  5 08:56:09 1993
+   To: postmaster@yummybake.com
+   From: Majordomo@bakers.org
+   Subject: Majordomo results
+   Reply-To: Majordomo@bakers.org
+
+   --
+   >>>> subscribe donut-makers donut-makers-dist@yummybake.com
+   Your request to Majordomo@bakers.org:
+
+           subscribe donut-makers donut-makers-dist@yummybake.com
+
+   has been forwarded to the owner of the "donut-makers" list for approval. 
+   This could be for any of several reasons:
+       You might have asked to subscribe to a "closed" list, where all new
+           additions must be approved by the list owner. 
+       You might have asked to subscribe or unsubscribe an address other than
+           the one that appears in the headers of your mail message.
+   When the list owner approves your request, you will be notified.
+
+   If you have any questions about the policy of the list owner, please
+   contact "sample-approval@bakers.org".  Thanks!
+
+   Majordomo@bakers.org
+
+As the message to the list owner explained, the owner can approve the
+subscription by mailing an "approve" command to the majordomo server:
+
+   From: owner-name@owner-address
+   To: Majordomo@bakers.org
+
+   approve !BooM! subscribe donut-makers donut-makers-dist@yummybake.com
+
+(where "!BooM!" is the list password).
+
+
+Moderating Lists without approve
+
+This section describes how to moderate messages manually if you can't
+use "approve".  It also shows the messages that get passed between the
+list owner and Majordomo.
+
+Here's a message that the "donut-makers" list owner just received:
+
+   Date: Sun, 5 Sep 93 22:17:34 PDT
+   To: Donut-makers-Owner@bakers.org
+   From: Donut-makers-Owner@bakers.org
+   Subject: BOUNCE Donut-makers@bakers.org: Approval required
+
+   >From elliek@hearthbake.com  Sun Sep  5 22:17:29 1993
+   Date: Sun, 5 Sep 93 22:17:29 PDT
+   From: elliek@hearthbake.com (Ellie Katella)
+   To: donut-makers@bakers.org
+   Subject: jelly donuts
+
+   What's your favorite recipe for jelly donuts?  Thanks.
+
+If the owner doesn't want to approve the message, it's courteous to
+mail a note to the original sender and explain why.  (Maybe Ellie
+should read the "donut-makers" "Frequently-Asked Questions" list.)
+
+There are a few ways to tell Majordomo (actually, the "resend" script)
+to send an approved message.  The easiest is the "approve" script.
+Otherwise, the owner should send mail to the list address (in this
+case, to Donut-makers@bakers.org).  The owner adds a line like this to
+the approved message header--or on the line before the approved
+message:
+
+   Approved: password
+
+There are two ways to do that:
+
+- On a mail system like MH that lets people modify the mail message
+  header, send the approved message to the list address as a new
+  message.  Add the "Approved:" header at the top.  (Delete headers
+  like "Date:"; leave "From:", "To:", and "Subject:".)  For example:
+
+     Approved: BigSecret
+     From: elliek@hearthbake.com (Ellie Katella)
+     To: donut-makers@bakers.org
+     Subject: jelly donuts
+
+     What's your favorite recipe for jelly donuts?  Thanks.
+
+   When the "Approved:" header appears with the message headers, these
+   message headers will be used when the message is sent to the list.
+   Compare that to the second method below.
+
+- Majordomo 1.60 added a new way to approve messages that's handy for
+  owners who can't modify their mail headers.  Send a new mail message
+  to the list address.  Start the message body with the "Approved:"
+  line.  Next, read in a copy of the approved message.  Delete any
+  useless headers and send it.
+
+  For example, in the Berkeley "mail" command:
+
+      ...
+     N 17 Donut-makers-Owner Sun Sep  5 22:17 23/733  BOUNCE Donut-makers
+      ...
+      & mail donut-makers@bakers.com
+      Subject:
+      Approved: BigSecret
+      ~f 17
+      Interpolating: 17
+      (continue)
+      ~v    ...editor starts... edit the headers...
+      (continue)
+      ~p    ...shows message you've edited...
+      -------
+      Message contains:
+      To: donut-makers@bakers.org
+
+      Approved: BigSecret
+      Date: Sun, 5 Sep 93 22:17:29 PDT
+      From: elliek@hearthbake.com (Ellie Katella)
+      To: donut-makers@bakers.org
+      Subject: jelly donuts
+
+      What's your favorite recipe for jelly donuts?  Thanks.
+      (continue)
+      ^D    ...sends message...
+      &
+
+   In this second method, the message sent to the list will contain the
+   headers below the "Approved:" line.
+   Headers above the "Approved:" won't be used.
+
+Either way, Ellie's message will go to the list with no trace of the
+password:
+
+   From Donut-makers-Owner@bakers.org Sun Sep  5 23:40:22 1993
+   Date: Sun, 5 Sep 93 22:17:29 PDT
+   From: elliek@hearthbake.com (Ellie Katella)
+   To: donut-makers@bakers.org
+   Subject: jelly donuts
+   Sender: Donut-makers-Owner@bakers.org
+   Precedence: bulk
+
+   What's your favorite recipe for jelly donuts?  Thanks.
+
+
+Bounced Mail and the Bounces List
+
+List owners will get familiar with messages like these:
+
+   Return-Path: <MAILER-DAEMON@mukluk.ice.ca>
+   Date: Sun, 10 Oct 93 13:24:11 EDT
+   From: MAILER-DAEMON@mukluk.ice.ca (Mail Delivery Subsystem)
+   Subject: Returned mail: Cannot send message for 3 days
+   Message-Id: <9310101724.AA20948@mukluk.ice.ca>
+   To: listown@online.ora.com
+
+      ----- Transcript of session follows -----
+   421 tuna.ice.ca: Host tuna.ice.ca is down
+
+      ----- Unsent message follows -----
+   Received: from online.ora.com by mukluk.ice.ca (4.1/4.7)
+           id <AA13653> for shh@tuna.ice.ca; Thu, 7 Oct 93 13:05:22 EDT
+   Received: by online.ora.com (5.65c/Spike-2.1)
+           id AA13466; Thu, 7 Oct 1993 10:13:03 -0400
+   Date: Thu, 7 Oct 1993 10:13:03 -0400
+       ...
+
+If your lists will be busy, you'll probably want to set up a special
+list named "bounces".  It's a list for subscribers of other lists whose
+mail starts bouncing.  The address of the subscriber is removed from
+the list they used to belong to and added to the "bounces" list.  A
+cron job runs the "bounce-remind" script every night to send mail to
+all the people with bad addresses.  The mail's "From:" address and
+envelope sender are set to "nobody", a user on your system whose mail
+goes to /dev/null.  (The /dev/null file is actually a "black hole."
+Text written there disappears; it's thrown away.)
+
+If the mail gets through to a subscriber, the subscriber will find out
+what has happened and how to fix it.  If the problem isn't fixed after
+a while (usually, a month or so), the list owner can review the
+"bounces" subscriber list and remove the hopeless cases.
+
+To set up the "bounces" list:
+
+1. Make sure that the "nobody" user exists on your system.  There
+   should also be a mail alias for "nobody" pointing to /dev/null:
+
+      nobody: /dev/null
+
+   If your system doesn't have that user and can't create it, you can
+   get by.  Make a mail alias that has an obvious name ("trashcan",
+   "dustbin", "nothing", etc.) pointing to /dev/null; use it in the
+   setup below.
+
+2. Follow the steps in the section "Creating a New List" to make the
+   "bounces" list.  Here's the main entry for "resend":
+
+      bounces: "|/usr/local/majordomo/bin/wrapper resend -p junk
+          -l Bounces -f nobody -h foo.com.au -s bounces-outgoing"
+
+   The priority "junk" helps stop mail bounces.
+
+3. Check the "bounce-remind" script to be sure that the path to the
+   Perl interpreter on the first line is correct.  Take a quick look
+   through the script.
+
+4. Make a crontab entry to run "bounce-remind" once a night.
+
+5. Help list owners set up their accounts with the "bounce" script.
+   Remember that the owners' ".majordomo" files need an entry for the
+   "bounces" list as well as the other lists.
+
+Bounced messages come in so many different formats that it's hard to
+completely automate subscriptions to the "bounces" list.  (In fact, in
+some cases, the addressee of the bounced mail won't even be shown in
+the message!)  If the list owner's system can run a Perl script, the
+"bounces" script makes the job easy.  The script works differently than
+"approve".  The script doesn't read a message from a file or standard
+input.  Instead, it reads its command line arguments:
+
+   % bounce listname user@xyz.com
+
+That command would unsubscribe the address user@xyz.com from the
+"listname" list and add them to the "bounces" list.  An owner who can't
+run the "bounce" script can send mail to Majordomo with two commands
+like these:
+
+   approve passwdA unsubscribe listname user@xyz.com
+   approve passwdB subscribe bounces user@xyz.com (931005 listname)
+
+The first command unsubscribes the user from the current list.  The
+second one subscribes the user to the "bounces" list, with a comment
+that shows the date and the name of the list they used to belong to.
+
+
+The Majordomo Log File
+
+Majordomo keeps a log file.  The file's pathname is set in the $log
+variable in your majordomo.cf file.  It's a good idea to read the file
+every day or two.
+
+When Majordomo is busy (such as after you've added a new list), you may
+want to run "tail -f" to watch messages as they're being added to the
+log.  Clean it out periodically.  I've found it useful to keep
+compressed copies of old log files for reference.
+
+The log file won't give you much help with security problems.  (As
+Brent has made clear, security wasn't one of Majordomo's main goals.)
+Transactions are logged with the "Reply-to:" or "From:" address in the
+mail message header.  For example, you can send a message like this:
+
+   Reply-to: John Doe <johndoe@nowhere.org>
+   From: Your-real-name <your-real-address>
+   To: majordomo@bakers.org
+
+   passwd donut-makers oldpassword newpassword
+
+This is what will be logged (and it will be "FAILED" only if the old
+password was incorrect):
+
+   Sep 05 21:06:31 bakers majordomo[27604] {johndoe@nowhere.org}
+            FAILED passwd donut-makers OLD NEW
+
+There's no trace of the original sender or any way to see the "OLD"
+password he tried.  One way to track messages like these is by reading
+your system MTA log file.  Another is by making duplicates of all mail
+sent to "majordomo".  For instance, the following alias would send a
+copy of all majordomo requests to "owner-majordomo":
+
+   majordomo: owner-majordomo, "|/usr/local/majordomo/bin/wrapper majordomo"
+
+Of course, on a busy system, the person who is "owner-majordomo"
+will get a lot of mail; a mail filter program like "procmail" can store
+that mail and help to sort out the messages you might really want to
+see.  (You can get "procmail", by Stephen R. van den Berg, from many
+anonymous FTP sites.)  Instead of a mailbox address, you can also give
+the absolute pathname of a log file.  Note that, in many cases, the
+file will need to be world-writable (mode 622 or 666).
+
+
+Managing the Archives
+
+An archive is a file containing messages that previously appeared on
+the mailing list.  You can create an archive simply by putting an entry
+in the system MTA alias file as described in the section "Creating a
+New List".
+
+A list's archive will keep growing forever until you truncate or split
+it.  It's a good idea to split the file once in a while.  Otherwise,
+people who "get" it can receive a HUGE mail message.  (Worse, some
+mailer may truncate the file or refuse to send it.)
+
+Majordomo doesn't come with fancy archive management tools.  The
+Majordomo distribution comes with a Perl script named
+"split_archive.pl"--it's in the "Tools" subdirectory.  It splits an
+archive file into separate files, one per message, named 0001, 0002,
+and so on.
+
+You can also put any ASCII file in the archive, and set up a directory
+hierarchy.  But you need to do this by hand.  For example, if you want
+majordomo to mail files that contain non-text characters, you'll need
+to pre-process the files with a utility like "uuencode" or "btoa".
+
+If your site has an anonymous FTP area, you can set Majordomo to store
+your archives there.  You can also configure the majordomo.cf file to
+handle "get" commands by mailing requests to an ftpmail server.  (See
+the section "Installing Majordomo".)  To do that, define the variables
+$ftpmail_address (and, optionally $ftpmail_location--the default is the
+local host) in the majordomo.cf file.  The ftpmail setup assumes that
+the FTP archive is structured the same way as your local archive
+directory.  It uses the pathname $filedir/listname$filedir_suffix for
+the archive directory, then issues an FTP "get" command for the file
+specified.
+
+
+Disabling Majordomo Temporarily
+
+Once Majordomo is running on your system, how do you do maintenance?
+It's always active because mail aliases will start the program
+anytime.  If you make a mistake in your maintenance, mail can start to
+bounce.  One way is to shut off your system's sendmail daemon, but that
+affects all mail on your system.
+
+An easier way is to make a small "stub" shell script named
+"majordomo.hold":
+
+   #! /bin/sh
+   exit 75
+
+Make that file executable with "chmod 755 majordomo.hold".  Then
+quickly (so there's less chance of causing incoming mail to bounce)
+swap the "majordomo" Perl script and your "majordomo.hold" script:
+
+   % mv majordomo majordomo.tmp && mv majordomo.hold majordomo
+
+(The shell's "&&" operator lets you type both command lines before
+executing either of them.  It does the second "mv" command only if the
+first one succeeds.)  When mail comes in, sendmail will run your little
+script, which will return an exit status of 75.  This special status
+makes sendmail defer (queue) the incoming message and try to deliver it
+to "majordomo:" again later.  When you're done with your maintenance,
+swap the script with the real "majordomo" script and mail will be
+processed again.  (Special exit statuses like 75 are listed in the file
+/usr/include/sysexits.h.)
+
+The same thing works with "resend"; disabling it will disable all of
+the lists.
+
+Note that your sendmail may convert pathnames of commands run by
+deferred messages to all lower-case letters.  This problem may only
+bite you after you defer messages.  For example, if your "resend" alias
+starts like this:
+
+   sample: "|/usr/local/majordomo/bin/wrapper resend
+       -A -a /usr/local/majordomo/Lists/Sample.passwd
+
+The "L" and "S" in that pathname may be changed to "l" and "s" when the
+message is deferred.  If they are, "resend" won't be able to find the
+password file.  The fix for this problem is to either change your
+sendmail.cf file or make all your file and directory names with only
+lower-case letters.

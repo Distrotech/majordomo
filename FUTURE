@@ -1,0 +1,229 @@
+	      _  _ ____  _ ____ ____ ___  ____ _  _ ____
+	      |\/| |__|  | |  | |__/ |  \ |  | |\/| |  |
+	      |  | |  | _| |__| |  \ |__/ |__| |  | |__|
+
+			     Release 1.94
+				FUTURE
+  --------------------------------------------------------------------------
+
+* Where is Majordomo headed?
+----------------------------
+
+In it's current release, 1.94, Majordomo is a stable, yet tangled,
+collection of code.  As the README says...
+
+	Along the way, it has picked up many features and additions
+	from various authors.  Because of this, and due to the initial
+	design of Majordomo, certain features (archiving, digesting,
+	and moderated lists) are currently done in a "non-optimum"
+	fashion.  In short, configuring Majordomo to do some of the
+	advanced features can be confusing.  This is a known problem
+	and is being worked on.
+
+
+Perhaps it would be enlightening to start with a vision of what
+Majordomo should look like in the future, and then expand on the
+vision.
+
+  1) Interaction with Majordomo should be easier; for the list user,
+     the list owner, and the Majordomo owner.  This means an
+     integrated Web interface, as well as a better mail interface.
+
+  2) Existing facilities should be integrated better.  Archiving and
+     digesting need integration.  
+
+  3) Access to Majordomo functions and lists should be extensively
+     configurable, assignable, and easy to control.
+
+  4) Improvements to adequately handle large lists, and large numbers
+     of lists.
+
+  5) Majordomo "plugins", configurable down to a per-list basis.
+     Hooks for pre & post operations to commands.  (ie, substitute a
+     different method of access checking for certain lists.)
+
+  6) Reduce, if possible, the morass of aliases needed for a large
+     Majordomo installation.
+
+  7) Consider the potential of integrating bulkmailer, TLB, or another
+     delivery agent into MD for large lists.
+
+
+Now, how are we going to get from here to there?  That's the tough
+question.  
+
+The first step is to require perl5.  This gives us heaps of good
+stuff, and will potentially greatly reduce the tangle of current
+code.  
+
+Next, abstract, define, and API-ize the core bits.  This is where the
+hooks to allow custom routines would come in, as well as allowing
+drop-in plugins.  Archiving and digesting are perfect examples of
+this; these are basically post and pre sending operations.
+
+API-izing things basically enables all the rest to be done easily and
+coherently, allowing for the seperate development of some quite useful
+features:
+	o  using a DBM database, or perl5 file-struct for all list
+	   configs.  
+	o  well-integrated pluggable web interface
+	o  a queue mechanism for busy servers.
+	o  fine-grained access control
+	o  customized address matching
+	o  post and pre Majordomo, List, and Command hooks
+	o  subscriber level features, such as digesting and encryption.
+	
+Some other ideas that come from brainstorming a bit on the MD vision:
+
+        o  Group Lists:  Define a collection of lists, and manage them
+	   the same way, with the same owners.  A 'leader list' would
+	   have 'leader variables' that the other lists 'follow'.
+
+	o  From a different viewpoint, Group Lists is simply ownership
+	   delegation.  Put Majordomo-owner at the top:
+
+			    Mojo Hierarchy
+			    --------------
+			 Mojo God:  All lists
+				  |
+		  Group God: Some lists or commands
+				  |
+		      Command God: Some commands
+				  |
+			  List God: One list
+				  |
+		     Variable God: Some variables
+
+
+	o  Command queuing:  Either plain, ala sendmail, or 'alarm
+	   clocking' -- queue commands, then process when the requests
+	   stop for a certain period.  Or perhaps...
+
+	o  Majordomo Server.  Likely run from inetd, this would be an
+	   interesting way of solving the startup overhead.  
+
+
+Now, will all these happen at once?  No, not unless someone spends
+some development money.  What's far more likely is an incremental
+change, creaping up to a fabled Majordomo 2.0 knows all, sees all.
+Broken down into manageable chunks, I see the following rough order
+happening:
+
+       Perl5.  APIs, abstraction, and definition of the 'interface
+       layer' to Majordomo.  Perl5 modules replacing bits of
+       majordomo, and conversion of internal functions to the API.
+
+       Hook implementation.  Web interface.  Integration of archiving,
+       digesting.  Group Lists, ownership delegation.  Access lists. 
+
+       Plugins.  Database backend for lists, subscribers.  Custom
+       operators.  Backend delivery support.
+
+
+Now, by all means, this isn't a complete list.  Rather, it's a
+compilation of the various ideas that have floated around the
+majordomo-workers list and the majordomo developers.  
+
+What is greatly desired is to have the necessary core bits to allow
+development of other features to happen in parallel.  This could
+follow the perl5 module design, with signup of projects to interested
+parties.
+
+Below here is Section 5 of the old README file (1.92), kept as a
+placeholder for known bugs as well as random ideas.
+
+----------------------------------------------------------------------
+
+The next major planned release will be majordomo 2.0. The
+specification document has been written for it, and is is in the
+process of being written. The intent with 2.0 is to have a defined
+programmers interface that allows people to develop portable modules
+that can be added into majordomo to provide additional
+functionality. If you think of majordomo as a stripped down car, and
+the addin modules as extra options that you can "buy", then you have
+the right idea. Majordomo 1.9x is being released to test the config
+file code, and because some of the resend and majordomo features seem
+to be needed by people on the majordomo-users list.
+
+Before the next planned release, there may be other releases in the
+1.9x series as bugs are found, and as additional functionality that is
+currently hinted at in the config file is added.
+
+5.1.1 Bugs/Misfeatures/Todo
+
+The following is a list of things that I want to address at some
+point. The items marked with a * imply that patches to implement the
+feature have been written, but it is too late in this cycle to apply
+the patch and test it. Hopefully some of these items will be fixed
+in later versions of majordomo 1.9x.
+
+ 1) Resend only recognizes an Approved: header as the first line in the body.
+    The approved header should be recognized if it is the first non-blank
+    line in the body. [[[ fixed in 1.94 ]]]
+
+ 2)* Resend should have a separate moderater address to bounce email to
+
+ 3) Multiple privacy levels have to be provided. yes, no, password protected
+
+ 4) The number of reported hits from which should be tunable
+
+ 5) approve has to be extended to handle almost all commands
+
+ 6) new-list should be part of resend
+
+ 7)* wrapper.c should use sysexits.h for its error codes
+       [[[ fixed in 1.94 ]]]
+ 8) auto lists should prevent the list from being subscribed to itself
+
+ 9)* auto lists should make sure that listserv style addresses aren't used
+      [[[ fixed in 1.94 ]]]
+10) provide the ability to smash case of all incoming addresses under
+    majordomo administrator control.
+
+11) ability to specify banned users whose posts are ignored.
+     [[[ fixed in 1.94 with taboo_headers ]]]
+12) rework the advertise/noadvertise interface
+
+13) Look at supporting #included/#exploder lists for mail sublists.
+
+14) set up reply to be smart enough to break mail loops
+	 (using received: headers)
+
+15) should -h not be required by resend, or should resend_host keyword go
+	 away?
+
+16) config should return the input file if there is an error.
+
+17) digest needs to strip headers and footers from list info. Maybe there
+	 should be a back channel out of resend that doesn't do any
+	 body massaging.
+
+18) have resend/majordomo check to see if the last Received: line is a
+	right hand sub/super string of the user's from address.
+
+19) fix help messages to remove syntax diagram info to stop address
+	subscriptions like:  subscribe list [user@site]
+
+20)* Support auto digest creation based on number of lines, and age.
+
+21) Have resend log messages as it sends them through. Can be used to
+	prevent mail loops as well as provide stats for later use.
+
+22) analyze code to make sure all areas that require locks are in place
+
+23) detect error condition (e.g. out of disk space) and deal with them better
+    [[[ fixed in 1.94 ]]]
+24) add code to support incremental config file changes.
+
+25) add ability to add arbitrary headers to message and check that the
+	 headers are in the proper form.
+
+26) add the ability to do load limiting of majordomo commands
+
+27) RCPT messages shouldn't be bounced as administrivia. They should be
+    in a different class, and should be user settable.
+
+28) digest always needs to have its archive directory present. Digest
+    should be rewritten to place its outgoing digest into the
+    incoming directory, and it should use archive to do archiving if
+    need be.

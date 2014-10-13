@@ -1,0 +1,969 @@
+#!/bin/perl
+# $Modified: Fri Jan  7 16:32:17 2000 by cwilson $
+
+# Copyright 1992, D. Brent Chapman.  All Rights Reserved.  For use by
+# permission only.
+#
+# $Source: /sources/cvsrepos/majordomo/resend,v $
+# $Revision: 1.90 $
+# $Date: 2000/01/07 15:32:39 $
+# $Author: cwilson $
+# $State: Exp $
+#
+# $Locker:  $
+#
+#  Okay, resend accepts many command line arguments, as revealed by the
+#  Getopts call:
+#      &Getopts("Aa:df:h:I:l:M:p:Rr:s") || die("resend: Getopts() failed: $!");
+#  Most of these are defined via the list config file, so in general, 
+#  it's a really bad idea to hardcode them in the alias definition.
+#  In a future version of majordomo, these will likely all be removed.
+#
+#  Here's a description of them, just to be documentive.  Note that the
+#  only REQUIRED option is -l.  Even that will probably go away in the future.
+#
+#       -l <list-name>          REQUIRED: specify list name
+#       -h <host-name>          specify host name
+#       -f <from-addr>          specify "sender" (default <list-name>-request)
+#       -M <max-msg-length>     specify max message length to forward
+#       -p <precedence>         add "Precedence: <precedence>" header
+#       -r <reply-to>           add "Reply-To: <reply-to>" header
+#       -I <file-list>          Bounce messages from users not listed in file
+#                               in colon-separated <file-list>
+#       -a <passwd>             approval password
+#       -A                      moderate list (require "Approved:" for posting)
+#       -R                      delete "Received:" lines
+#       -s                      enable "administrivia" checks
+#       -d                      debug; say it, but don't do it
+#	-C			alternate config file
+#
+
+#$DEBUG = 1;
+
+# set our path explicitly
+# PATH it is set in the wrapper, so there is no need to set it here.
+#$ENV{'PATH'} = "/bin:/usr/bin:/usr/ucb";
+
+# Before doing anything else tell the world I am resend
+# The mj_ prefix is reserved for tools that are part of majordomo proper.
+# (not that anything uses this variable.)
+$main'program_name = 'mj_resend'; #';
+
+# If the first argument is "@filename", read the real arguments
+# from "filename", and shove them onto the ARGV for later processing
+# by &Getopts()
+#
+if ($ARGV[0] =~ /^\@/) {
+    $fn = shift(@ARGV);
+    $fn =~ s/^@//;
+    open(AV, "< $fn" ) || die("open(AV, \"< $fn\"): $!\nStopped");
+    undef($/);	# set input field separator
+    $av = <AV>;	# read whole file into string
+    close(AV);
+    @av = split(/\s+/, $av);
+    unshift(@ARGV, @av);
+    $/ = "\n";
+}
+
+# Parse arguments here.  We do this first so that we can conditionally
+# evaluate code in majordomo.cf based on $opt_l (or any other command line
+# argument).  Here I've assumed that perl was installed correctly and
+# getopts.pl was place where it's supposed to be.  This changes previous
+# behavior which allowed getopts.pl to be in the same place as
+# majordomo.cf.
+require "getopts.pl";
+&Getopts("C:c:Aa:df:h:I:l:M:p:Rr:s") || die("resend: Getopts() failed: $!");
+
+if (! defined($opt_l)) {
+  die("resend: must specify '-l list'");
+}
+    
+# Read and execute the .cf file
+$cf = $opt_C || $opt_c || $ENV{"MAJORDOMO_CF"} || "/etc/majordomo.cf";
+
+# Despite not having a place to send the remains of the body,
+# it would be nice to send a message to root or postmaster, at least...
+#
+if (! -r $cf) {
+    die("$cf not readable; stopped");
+}
+
+require "$cf";
+
+chdir($homedir) || die("Can't chdir(\"$homedir\"): $!");
+
+unshift(@INC, $homedir);
+require "ctime.pl";  # For logging purposes
+require "majordomo.pl";
+require "majordomo_version.pl";
+require "config_parse.pl";
+
+# pickup hostname from majordomo.cf unless defined on the command line
+$opt_h = $opt_h || $whereami;
+
+# smash case for the list name
+$opt_l =~ tr/A-Z/a-z/;
+
+# We must set up the mailers and logging as soon possible so that we can
+# send and log complaints and aborts somewhere.  Unfortunately we need to
+# parse the config file to get some of the variables.  So we fake it here,
+# and set them properly later.
+# XXX It is possible that owner-$opt_l won't be the right address, but we
+# have little choice.  Sending the bounces to $whoami_owner is an option,
+# but might not clearly indicate the list name.
+$sendmail_command = $sendmail_command || "/usr/lib/sendmail";
+$bounce_mailer = $bounce_mailer || "$sendmail_command -f\$sender -t";
+&set_mail_from("owner-$opt_l");
+&set_mail_sender("owner-$opt_l");
+&set_mailer($bounce_mailer);
+&set_abort_addr("owner-$opt_l");
+&set_log($log, $opt_h, "resend", $opt_l);
+
+if (! defined ($TMPDIR)) {
+    &bitch("\$TMPDIR wasn't defined in $cf.  Using /usr/tmp instead.\n".
+	   "Please define in $cf.\n");
+    $TMPDIR = '/usr/tmp';
+}
+
+# if we're running from a tty, just spit to stderr, else
+# open up a temp file for the debug output.
+#
+if (! -t STDERR) {
+    close STDERR;
+    open (STDERR, ">>$TMPDIR/resend.debug");
+}
+
+# XXX some standard way of setting defaults needs to be done..
+#
+$MAX_HEADER_LINE_LENGTH = $MAX_HEADER_LINE_LENGTH || 128;
+$MAX_TOTAL_HEADER_LENGTH = $MAX_TOTAL_HEADER_LENGTH || 1024;
+
+print STDERR "$0 [$$]: starting.\n" if $DEBUG;
+
+if ( ! @ARGV) {
+    die("resend: must specify outgoing list as last arg(s)");
+    # this doesn't have to be this way.  It could slurp it
+    # from the alias it was invoked as...?
+}
+
+# A classic case of feeping creaturism.  While there are possibly good reasons
+# why all these things can be classified on the command line, there's
+# *NO* good reason why everything is "opt_X".  YATTF.
+# 
+$opt_r = "$opt_r\@$opt_h" if ( defined($opt_r) );
+
+&get_config($listdir, $opt_l);
+
+$opt_A = &cf_ck_bool($opt_l,"moderate") if &cf_ck_bool($opt_l,"moderate");
+$opt_h = $config_opts{$opt_l,"resend_host"} 
+			if($config_opts{$opt_l,"resend_host"} ne '');
+$opt_a = $config_opts{$opt_l,"approve_passwd"}
+			if ($config_opts{$opt_l,"approve_passwd"} ne '');
+$opt_M = $config_opts{$opt_l,"maxlength"} 
+			if ($config_opts{$opt_l,"maxlength"} ne '');
+
+$opt_f = $config_opts{$opt_l,"sender"}
+			if ($config_opts{$opt_l,"sender"} ne '');
+$opt_p = $config_opts{$opt_l,"precedence"}
+			if ($config_opts{$opt_l,"precedence"} ne '');
+$opt_r = $config_opts{$opt_l,"reply_to"}
+			if ($config_opts{$opt_l,"reply_to"} ne '');
+$opt_I = $config_opts{$opt_l,"restrict_post"} 
+			if ($config_opts{$opt_l,"restrict_post"} ne '');
+$opt_R = &cf_ck_bool($opt_l,"purge_received")
+			 if &cf_ck_bool($opt_l,"purge_received");
+$opt_s = &cf_ck_bool($opt_l,"administrivia")
+			if &cf_ck_bool($opt_l,"administrivia");
+$opt_d = &cf_ck_bool($opt_l,"debug") 
+			if &cf_ck_bool($opt_l,"debug");
+
+# Construct the envelope sender for outbound messages
+if (defined($opt_f)) {
+    $sender = $opt_f;
+} else {
+    $sender = "$opt_l-request";
+}
+
+# If the sender doesn't contain an `@', tack on one, followed by the
+# hostname
+if ($sender !~ /\@/) {
+  $sender .= "\@$opt_h";
+}
+
+# We can now properly define some of the mailer properties.
+&set_mail_from($sender);
+&set_mail_sender($sender);
+&set_abort_addr($sender);
+&set_log($log, $opt_h, "resend", $opt_l);
+
+if (defined($opt_A) && ! defined($opt_a)) {
+    die("resend: must also specify '-a passwd' if using '-A' flag");
+}
+
+
+#
+# These are headers to skip
+#
+$skip_headers =  '/^from /i' . 
+		 '|| /^x-confirm-reading-to:/i' .		# pegasus mail (windoze)
+		 '|| /^disposition-notification-to:/i' .        # eudora
+		 '|| /^x-ack:/i' .
+		 '|| /^sender:/i' .
+		 '|| /^return-receipt-to:/i' .
+		 '|| /^errors-to:/i' . 
+		 '|| /^flags:/i' .
+		 '|| /^resent-/i' .
+		 '|| /^priority/i' .
+		 '|| /^x-pmrqc:/i' .
+		 '|| /^return-path:/i' .
+		 '|| /^encoding:/i'				# could munge the length of the message
+		 ;
+
+#
+# Define the eval's used to catch "taboo" headers, message contents,
+# and administrative headers.  The taboo headers can be global
+# or per list.  The administrative headers are global.
+#
+# The eval is a construct like so:
+#   foo: { /^subject:\s*subscribe/ && ( $taboo = '/^subject:\s*subscribe/', last foo); }
+# so that the eval returns the regexp that matched.
+#   
+
+print STDERR "$0: defining evals to catch the bad stuff.\n" if $DEBUG;
+
+if ($config_opts{$opt_l, 'taboo_headers'} ne '') {
+    @taboo_headers = split(/\001/,$config_opts{$opt_l, 'taboo_headers'});
+    if ($#taboo_headers >= $[) {
+	$is_taboo_header = "foo: {\n";
+	foreach $t (@taboo_headers) {
+	    ($ts = $t) =~ s/(['\\])/\\$1/g;
+	    $is_taboo_header .= "$t && (\$taboo = '$ts', last foo);\n";
+	}
+	$is_taboo_header .= "\$taboo = \"\";\n}; \$taboo;\n";
+    }
+}
+
+if ($config_opts{$opt_l, 'taboo_body'} ne '') {
+    @taboo_body = split(/\001/,$config_opts{$opt_l, 'taboo_body'});
+    if ($#taboo_body >= $[) {
+	$is_taboo_body = "foo: {\n";
+	foreach $t (@taboo_body) {
+	    ($ts = $t) =~ s/(['\\])/\\$1/g;
+	    $is_taboo_body .= "$t && (\$taboo = '$ts', last foo);\n";
+	}
+	$is_taboo_body .= "\$taboo = \"\";\n}; \$taboo;\n";
+    }
+}
+
+if (defined($global_taboo_headers)) {
+    @global_taboo_headers = split(/\n/,$global_taboo_headers);
+    if ($#global_taboo_headers >= $[) {
+	$is_global_taboo_header = "foo: {\n";
+	foreach $t (@global_taboo_headers) {
+	    ($ts = $t) =~ s/(['\\])/\\$1/g;
+	    $is_global_taboo_header .= "$t && (\$taboo = '$ts', last foo);\n";
+	}
+	$is_global_taboo_header .= "\$taboo = \"\";\n}; \$taboo;\n";
+    }
+}
+
+if (defined($global_taboo_body)) {
+    @global_taboo_body = split(/\n/,$global_taboo_body);
+    if ($#global_taboo_body >= $[) {
+	$is_global_taboo_body = "foo: {\n";
+	foreach $t (@global_taboo_body) {
+	    ($ts = $t) =~ s/(['\\])/\\$1/g;
+	    $is_global_taboo_body .= "$t && (\$taboo = '$ts', last foo);\n";
+	}
+	$is_global_taboo_body .= "\$taboo = \"\";\n}; \$taboo;\n";
+    }
+}
+#";  dammit. 
+
+# admin subject checks.  Since $admin_headers is defined in $cf 
+# (majordomo.cf), an upgrade may not have $admin_headers.  
+# Bitch about it if so.
+#
+if (! defined($admin_headers)) {
+    &bitch("resend:  \$admin_headers not defined in $cf !!\n" .
+	   "Majordomo will only catch \"subscribe\" and \"unsubscribe\" in\n" .
+	   "the subject field...\n");
+    @admin_headers = ('/^subject:\s*subscribe\b/i' ,
+		      '/^subject:\s*unsubscribe\b/i');
+} else {
+    @admin_headers = split(/\n/, $admin_headers);
+}
+
+$is_admin_header = "foo: {\n";
+foreach $t (@admin_headers) {
+    $is_admin_header .= "$t && (\$taboo = '$t', last foo);\n";
+}
+$is_admin_header .= "\$taboo = \"\";\n}; \$taboo;\n";
+
+# Body Check!    
+# Common things that people send to the wrong address.
+# These are caught in the first 10 lines of the message body 
+# if 'administravia' is turned on and the message isn't marked approved.
+#
+# The code that catches this should transparently redirect 
+# majordomo commands to majordomo.  That would give the additional
+# advantage of not having to add to this silly construct for
+# each new majordomo command.
+#
+# $admin_body should be defined in the $cf file, but an upgrade
+# may miss this fact.  Bitch about it, and use a minimal list if so.
+#
+if (! defined($admin_body)) {
+    &bitch("resend:  \$admin_body not defined in $cf !!\n" .
+	   "Majordomo will only catch \"subscribe\" and \"unsubscribe\" in\n" .
+	   "the body.\nLook at $homedir/sample.cf for a good definition.");
+    @admin_body = ('/^subject:\s*subscribe\b/i' ,
+		      '/^subject:\s*unsubscribe\b/i');
+} else {
+    @admin_body = split(/\n/, $admin_body);
+}
+
+$is_admin_body = "foo: {\n";
+foreach $t (@admin_body) {
+    $is_admin_body .= "$t && (\$taboo = '$t', last foo);\n";
+}
+$is_admin_body .= "\$taboo = \"\";\n}; \$taboo;\n";
+
+
+print STDERR "$0: caching the message.\n" if $DEBUG;
+
+#
+# cache the message, so the parent sendmail process can exit.
+#
+&open_temp(OUT, "$TMPDIR/resend.$$.out") ||
+    &abort("resend: Can't open $TMPDIR/resend.$$.out: $!");
+
+&open_temp(IN, "$TMPDIR/resend.$$.in") ||
+    &abort("resend: Can't open $TMPDIR/resend.$$.in: $!");
+
+while (<STDIN>) {
+    print IN $_;
+}
+
+close(IN);
+
+open(IN, "$TMPDIR/resend.$$.in") || 
+    die("resend: Can't open $TMPDIR/resend.$$.tmp: $!");
+
+#
+# Message parsing starts here
+#
+
+print STDERR "$0: parsing header.\n" if $DEBUG;
+
+# parse the header for bad lines, etc.  We'll bounce in a moment.
+#
+$result = &parse_header;
+
+# The first line of the body could hold an approved line.  Let's check.
+#
+$_ = <IN>;
+
+if (/^approved:\s*(.*)/i					# aha!
+    && defined($opt_a)) {
+    # OK, is it a valid "Approved:" line?
+    $approved = &chop_nl($1);
+    if ($approved ne $opt_a 
+	&& !(&main'valid_passwd($listdir, $opt_l, $approved))) { #Augh!')){
+	$result .= " Invalid 'Approved:' header";
+	undef $approved;
+    }
+    # The Approved: line is valid
+    # Look at the next line:
+    $_ = <IN>;
+    if (/\S/) {
+	# We have something other than a blank line.  We _assume_ it's
+	# header.  Consequences: if it's not a header, things get screwed
+	# badly.  If we reverse the logic and look instead for something
+	# header-like, we permit the possibility of the moderator leaving
+	# out the blank line, which is not a good idea because they might
+	# get used to it, which will bite them when they approve a message
+	# starting something that looks like a header. 
+	# XXX Options: complain if we find no blank line and no header-like
+	# stuff.
+	close OUT;                      # Nuke the output so far.
+	unlink "$TMPDIR/resend.$$.out"; # XXX These filenames should be in
+                                        # variables.
+	# Open a new temp file.
+	&open_temp(OUT, "$TMPDIR/resend.$$.out") ||
+	  &abort("resend: Can't open $TMPDIR/resend.$$.out: $!");
+	
+	# We'll be nice and skip a From_ mailbox separator, which just
+	# might have been quoted by some intervening mail munger.
+	if (!/^>?From /) {
+	    # Rewind back over the header line we just pulled
+	    seek(IN, - length($_), 1);
+	}
+	
+	# Parse the following as a completely new message.
+	$result .= &parse_header; # The return value won't matter; we're
+	# approved.
+	
+    }
+    # else the line was blank; we let it be eaten and continue
+    
+} else {
+    # No approved line, dniwer
+    seek(IN, - length($_), 1);				       
+}
+
+print STDERR "$0: checking for valid sender.\n" if $DEBUG;
+
+# Check for a valid sender, if the list has restrict_post set 
+# and the message isn't approved.
+#
+# aauuuugggh!  'moderator' != 'restrict_post' !!  They should be the
+# same!!
+#
+$result .= &check_sender if ( defined( $opt_I ) && ! defined ($approved));
+
+# If approval is required, and we haven't got it, boing it goes..
+#
+$result = "Approval required: $result" if 
+  (defined($opt_A) && ! defined($approved));
+
+print STDERR "$0: sender check: '$result'\n" if $DEBUG;
+
+# Print the RFC822 separator
+print OUT "\n";
+
+# Print out any message_fronters
+#    
+if ( $config_opts{$opt_l,"message_fronter"} ne '' ) {
+    local($fronter) = &config'substitute_values (
+	    $config_opts{$opt_l,"message_fronter"}, $opt_l);#';
+    $fronter =~ s/\001|$/\n/g;
+    print OUT $fronter;
+}
+
+# We are guaranteed to be just after a blank line now. Slurp the body
+$result .= &parse_body;
+
+# Yes Tigger, *now* you can bounce.  We've checked for 
+# any Approved headers & lines, taboo_headers, and taboo_bodies
+&bounce($result) if ( $result =~ /\S/ && ! defined($approved));
+
+# Print out any message_footers
+#
+print STDERR "$0: adding any footers.\n" if $DEBUG;
+
+if ( $config_opts{$opt_l,"message_footer"} ne '' ) {
+    local($footer) = 
+	&config'substitute_values(
+	    $config_opts{$opt_l,"message_footer"}, $opt_l);   #'
+    $footer =~ s/\001|$/\n/g;
+    print OUT $footer;
+}
+
+# Finished munging the message and decided it's valid, now send it out.
+#
+close OUT;
+
+# The following eval expands embedded variables like $sender
+$sendmail_cmd = eval qq/"$mailer"/;
+$sendmail_cmd .= " " . join(" ", @ARGV);
+
+# check for the dreaded -t option to sendmail, which will cause
+# mail to loop 26 times...
+#
+if ($sendmail_cmd =~ /sendmail/ && $sendmail_cmd =~ /\s-t/) {
+    $sendmail_cmd =~ s/-t//;
+    &bitch("resend:  \$sendmail_cmd (aka \$mailer in majordomo.cf\n" .
+	   "had a -t option.  This will cause mail to loop 26 times.\n" .
+	   "Since this probably isn't what you want to have happen,\n".
+	   "resend has not passed that option to sendmail.\n");
+}
+
+print STDERR "$0: \$sendmail_cmd is $sendmail_cmd\n" if $DEBUG;
+
+# To debug or not debug, that is the question.
+#
+if (defined($opt_d)) {
+    $| = 1;
+    $, = ' ';
+    print STDERR "Command: $sendmail_cmd\n";
+    open (IN, "$TMPDIR/resend.$$.out");
+    while (<IN>) {
+	print STDERR $_;
+    }
+    unlink(&fileglob("$TMPDIR", "^resend\.$$\."));
+    exit(0);
+}
+
+# open the mailer
+#
+local(*MAILOUT, *MAILIN);
+if (defined($isParent = open(MAILOUT, "|-"))) {
+    &do_exec_sendmail(split(' ', $sendmail_cmd))
+	unless $isParent;  # only if we're in the child
+} else {
+    &abort("Failed to fork prior to mailer exec");
+}
+
+# open our tmp file
+#
+open(MAILIN, "$TMPDIR/resend.$$.out");
+
+# spit it out!
+#
+while (<MAILIN>) {
+    print MAILOUT $_;
+}
+
+# cleanup
+#
+close(MAILIN);
+unlink(&fileglob("$TMPDIR", "^resend\.$$\.")) || &abort("Error unlinking temp files: $!");
+close(MAILOUT) || do {
+    $? >>= 8;
+    &abort("Mailer $sendmail_cmd exited unexpectedly with error $?") 
+	unless ($sendmail_cmd =~ /sendmail/ && $? == $EX_NOUSER);
+};
+
+# Seeya.
+#
+exit(0);
+
+
+######################################################################
+# 
+#  Subroutines.
+#
+######################################################################
+
+# check for a valid sender for moderated lists.
+#
+sub check_sender {
+    # Uh, who?
+    return " This may be hard to believe, but there was no \"From:\" field" .
+	"in this message I just received.  I'm not gonna send it out, " .
+	    "but you can... " if ! defined($from);
+    
+    local($file) = 0;
+
+    # !@$#% cryptic variables.  opt_I is restrict_post, which is a colon
+    # or whitespace seperated list of files that can contain valid
+    # senders.
+    #  [[[ Scary, I just realized that !@$#% is almost valid perl... ]]]
+    local(@files) = split (/[:\s]+/, $opt_I);
+ 
+    foreach $file (@files) {
+	# Return a null message if the sender (from the From: or
+	# Reply-To: headers) is found
+	#
+	return "" if &is_list_member($from, $listdir, $opt_l, $file) ||
+	    (defined $reply_to	&&
+	    $reply_to ne $from	&&
+	    &is_list_member($reply_to, $listdir, $opt_l, $file));
+    }
+
+    # We only get here if nothing matches.
+    # 
+    " Non-member submission from [$from] ";
+}
+
+# 
+# parse_header.
+#  Slurp in the header, checking for bad things.  Returns a non-zero length string if 
+#  a taboo or administrative header is found.
+# 
+#   [[[ Why couldn't one simply slurp the header in, assign it to an
+#	assoc. array, and print out everything but the bad stuff? ]]]
+#       
+
+sub parse_header {
+    local($gonna_bounce);
+    local($kept_last) = 0;			      # our return flag/string.
+
+    print STDERR "$0: parse_header: enter.\n" if $DEBUG;
+    print STDERR "$0: parse_header:  taboo_headers = $is_taboo_header\n" if $DEBUG;
+    print STDERR "$0: parse_header:  global_taboo_headers = $is_global_taboo_header\n" if $DEBUG;
+    print STDERR "$0: parse_header:  admin_headers = $is_admin_header\n" if $DEBUG;
+    
+
+    while (<IN>) {		                      
+	print STDERR "$0: parse_header: [$.: $_]" if $DEBUG;
+
+	last if /^$/;		# stop when we hit the end.  RFC822.
+	next unless /\S/;	# skip leading blank lines; usually only
+				# there if this is a restart after an
+				# in-body "Approved:" line
+
+	print STDERR "$0: parse_header: [$.] taboo_header check\n" 
+	    if $DEBUG;
+	# check for taboo_headers or approved header
+	#
+	if ($#taboo_headers >= $[ && !$approved &&
+	    eval $is_taboo_header) {
+	    $gonna_bounce .= "taboo header: $taboo ";
+	    print STDERR "$0: parse_header: [$.: boing: $gonna_bounce\n" if $DEBUG;
+	}
+	if ($DEBUG && $@) {
+	  # Something went boink in eval, say something useful.
+	  print STDERR "$0: parse_header: taboo_header error $@\n";
+	}
+
+	if ($#global_taboo_headers >= $[ && !$approved &&
+	    eval $is_global_taboo_header) {
+	    $gonna_bounce .= "global taboo header: $taboo ";
+	    print STDERR "$0: parse_header: [$.: boing: $gonna_bounce\n" if $DEBUG;
+	}
+
+	if ($DEBUG && $@) {
+	  # Something went boink in eval, say something useful.
+	  print STDERR "$0: parse_header: global_taboo_header error $@\n";
+	}
+
+
+	# check for administative headers:
+	# Usually subscribe, unsubscribe, etc, in Subject field
+	#
+	print STDERR "$0: parse_header: [$.] administrative_header check\n" 
+	    if $DEBUG;
+
+	if ($#admin_headers >= $[ && !$approved && defined($opt_s) &&
+	    eval $is_admin_header) {
+	    $gonna_bounce .= "Admin request: $taboo ";
+	    print STDERR "$0: parse_header: [$.: boing: $gonna_bounce\n" if $DEBUG;
+	}
+	
+	print STDERR "$0: parse_header: Approved check\n" if $DEBUG;
+
+	# Check for Approved line
+	# 
+	# Oddly enough, we may already be approved when we get here.  In
+	# that case, we should nuke any extra Approved: headers we see.
+	# Why?  Well, consider this: you change the password, but send an
+	# approved message out before the config change takes effect.  So
+	# it bounces back to you with the Approved: line in it.  This line
+	# is now valid.  You approve the bounce using the cut-and-paste
+	# method, putting another Approved: line in front of the headers of
+	# the raw bounced message and send it off.  There are now two
+	# Approved: headers.  If we don't remove the Approved: header from
+	# the headers of the message you pasted, we've revealed your list
+	# password.
+
+	if (/^approved:\s*(.*)/i && defined($opt_a)) {
+	    if (!$approved) {
+		print STDERR "$0: parse_header: found an approved header\n" if $DEBUG;
+		$approved = &chop_nl($1);
+		if ($approved ne $opt_a				# check the p/w given against approve_passwd
+		    && !(&main'valid_passwd($listdir, $opt_l, $approved))) { # and also against admin_passwd ')
+		    if (defined($opt_A)) { # bounce only if list is moderated
+			$gonna_bounce  .= "Invalid 'Approved:' header "; 
+			print STDERR "$0: parse_header: [$.: boing: $gonna_bounce\n" if $DEBUG;
+		    }
+		    undef $approved;
+		} else {
+		    # reset the bounce counter, so that we return cleanly.
+		    # this allows a message with a taboo_header or admin_header
+		    # but with a valid Approved line to be posted.
+		    $gonna_bounce = '';
+		    next;				      # gotta remove that approved line, dontcha know
+		}
+	    }
+	    else {
+		# We have already been approved, so skip this header
+		next;
+	    }
+	}
+
+	print STDERR "$0: parse_header: skipping headers\n" if $DEBUG;
+	# skip all these headers
+	if (eval $skip_headers) {
+	    $kept_last = 0;
+	    print STDERR "$0:    skipped\n" if $DEBUG;
+	    next;
+	}
+
+	# skip these special headers
+	if ((/^precedence:/i && defined($opt_p))	# skip only if "-p" set
+	    || (/^received:/i && defined($opt_R))	# skip only if "-R" set
+	    || (/^reply-to:/i && defined($opt_r))	# skip only if "-r" set
+	    || (/^\s/ && ! $kept_last))			# skip if skipped last
+	  {
+	    $kept_last = 0;
+	    print STDERR "$0:    skipped\n" if $DEBUG;
+	    next;
+	  }
+	
+	# reset $kept_last in case next line is continuation
+	# this should go someplace now... but where?
+	print STDERR "$0:    kept\n" if $DEBUG;
+	$kept_last = 1;
+    
+
+	# prepend subject prefix
+	#
+	if ( (/^subject:\s*/i) 
+	    && ($config_opts{$opt_l,"subject_prefix"} ne '')) {
+
+	    print STDERR "$0: parse_header: adding subject prefix\n" if $DEBUG;
+	    local($foo) = &config'substitute_values($config_opts{$opt_l,"subject_prefix"}, $opt_l);#';
+	    local($foo_pat) = $foo;
+	    $foo_pat =~ s/(\W)/\\$1/g;
+	    s/^subject:[^\S\n]*/Subject: $foo /i if !/$foo_pat/; 
+	}
+	
+	# snag reply-to field 
+	#
+	$reply_to = $1 if /^reply-to:\s*(.+)/i;
+
+	# snag from line
+	#
+	if ( /^from:\s*(.+)/i ) {
+	    $from = $1;
+	    $from_last = 1;					# the from line can span lines
+	}
+	elsif ( defined($from_last) ) {
+	    if ( /^\s+(.+)/ ) {
+		$from .= " $1";
+	    } else {
+		undef($from_last);
+	    }
+	}
+	
+# Virtual Majordomo Hack
+#	s/^to:(.*)\b$opt_l\b(.*)$/To:$1 $opt_l\@$whereami $2/i ;
+
+	&check_hdr_line($_);					# check for length & balance on from, cc, and to fields.
+	print OUT $_;
+    }
+
+    # finished with the header.  
+    # Now, we aren't going to bounce yet, even if it looks bad, 
+    # because we allow an Approved line as the _first_ line in the *body*.
+    #
+    # return $gonna_bounce if length($gonna_bounce);
+
+
+    print STDERR "$0: parse_header: adding header fields\n"
+	    if $DEBUG;
+
+    # add new header fields
+    print OUT "Sender: $sender\n";
+    if (defined($opt_p)) {
+	print OUT "Precedence: $opt_p\n";
+    }
+
+    if (defined($opt_r)) {
+	print OUT "Reply-To: ", &config'substitute_values($opt_r), "\n";   #';
+    }
+    
+    # print out per-list additonal headers
+    if ( $config_opts{$opt_l,"message_headers"} ne '' ) {
+	local($headers) = &config'substitute_values (
+			$config_opts{$opt_l,"message_headers"}, $opt_l);#';
+	$headers =~ s/\001|$/\n/g;
+	print OUT $headers;
+    }
+    print STDERR "$0: parse_header:  returning with '$gonna_bounce'\n" if $DEBUG;
+
+    " $gonna_bounce ";
+}
+
+# Meander through the message body, checking for
+# administravia, taboo stuff, and excessive length.
+#
+sub parse_body {
+    local($body_line_count, $body_len) = 0;
+    local($gonna_bounce);
+
+    print STDERR "$0: parse_body: enter\n" if $DEBUG;
+
+    while (<IN>) {
+	$body_line_count++;
+	$body_len += length($_);
+
+	# check for administravia in the first 10 lines of the body
+	# if so told and not approved.
+	if ($body_line_count < 10 
+	    && defined($opt_s)
+	    && !defined($approved)
+	    && eval $is_admin_body) {
+	    $gonna_bounce .= 
+		" Admin request of type $taboo at line $body_line_count ";
+	    next;
+	}
+
+	# if not approved, check for taboo body stuff
+	# and message length
+	#
+	if ( !defined($approved)) {			       
+
+	    if ( $#taboo_body >= $[
+		&& eval $is_taboo_body) {
+		$gonna_bounce .= 
+		    " taboo body match \"$taboo\" at line $body_line_count ";
+		next;
+	    }
+
+	    if ($#global_taboo_body >= $[ 
+		&& eval $is_global_taboo_body) { 
+		$gonna_bounce .= 
+		    " global taboo body match \"$taboo\" " .
+			"at line $body_line_count ";
+		next;
+	    }
+	    
+	    # make sure it doesn't make the message too long
+	    if (defined($opt_M) 
+		&& $body_len > $opt_M
+		&& !$already_bitched_about_length) {
+		$already_bitched_about_length++;
+		print STDERR "$0: parse_body: message too long\n" if $DEBUG;
+		$gonna_bounce .= " Message too long (>$opt_M chars) ";
+		next;
+	    }
+	}
+	print OUT $_;
+    }								# while
+    print STDERR "$0: parse_body: exiting with '$gonna_bounce'\n" 
+	if $DEBUG;
+
+    " $gonna_bounce ";
+}
+
+
+
+sub check_balance {
+    print STDERR "$0: check_balance: enter: $_\n" if $DEBUG;
+    # set a temporary variable
+    local($t) = shift;
+    # Remove quoted material
+    # ( looks like lisp, don't it? )
+    1 while $t =~ s/(^|([^\\\"]|\\.)+)\"([^\\\"\n]|\\.)*\"?/$1/g; #"
+    # strip out all nested parentheses
+    1 while $t =~ s/\([^\(\)]*\)//g;
+    # strip out all nested angle brackets
+    1 while $t =~ s/\<[^\<\>]*\>//g;
+    # if any parentheses or angle brackets remain, were imbalanced
+    if ($t =~ /[\(\)\<\>]/ && ! defined($approved)) {
+	&bounce("Imbalanced parentheses or angle brackets");
+	return(undef);
+    }
+    return(1);
+}
+
+sub check_hdr_line {
+    
+    local($_) = shift;
+    print STDERR "$0: check_hdr_line: enter: $_\n" if $DEBUG;
+
+    if (! /^\s/) {	# is this a continuation line?
+	# Not a continuation line.
+	# If $balanced_fld is defined, it means the last field was one
+	# that needed to have balanced "()" and "<>" (i.e., "To:", "From:",
+	# and "Cc:", so check it.  We do it here in case the last field was
+	# multi-line.
+
+	if (defined($balanced_fld)) {
+	    &check_balance($balanced_fld);
+	}
+
+	# we undefine $balanced_fld and reset $field_len; these may be set below
+
+	undef($balanced_fld);
+	$field_len = 0;
+    }
+
+    # is this a field that must be checked for balanced "()" and "<>"?
+    if (defined($balanced_fld) || /^from:/i || /^cc:/i || /^to:/i) {
+	# yes it is, but we can't check it yet because there might be
+	# continuation lines.  Buffer it to be checked at the beginning
+	# of the next non-continuation line.
+
+	# is this line too long?
+	if ((length($_) > $MAX_HEADER_LINE_LENGTH) && ! defined($approved)) {
+	    &bounce("Header line too long (>$MAX_HEADER_LINE_LENGTH)");
+	    return(undef);
+	}
+
+	# is this field too long?
+	if ((($field_len += length($_)) > $MAX_TOTAL_HEADER_LENGTH) && ! defined($approved)) {
+	    &bounce("Header field too long (>$MAX_TOTAL_HEADER_LENGTH)");
+	    return(undef);
+	}
+
+	$balanced_fld .= $_;
+	chop($balanced_fld);
+    }
+
+    # if we get here, everything was OK.
+    return(1);
+}
+
+sub bounce {
+    local(*BOUNCE);
+    local($reason) = shift;
+    local($_);
+
+    print STDERR "$0: bounce enter\n" if $DEBUG;
+
+    &send_bounce(BOUNCE, 
+                   (( $config_opts{$opt_l, 'moderator'} ne "") ?
+                      $config_opts{$opt_l, 'moderator'} : "$opt_l-approval\@$whereami"),
+		      "BOUNCE $opt_l\@$opt_h: $reason");
+    
+    seek(IN, 0, 0);
+    while (<IN>) {
+	print BOUNCE $_;
+    }
+    close(BOUNCE);
+    unlink(&fileglob("$TMPDIR", "^resend\.$$\."));
+
+    print STDERR "$0: bounce exiting\n" if $DEBUG;
+
+    exit(0);
+}
+
+sub send_bounce {
+    local(*MAIL) = shift;
+    local($to) = shift;
+    local($subject) = shift;
+    local($isParent);
+    local($mailcmd);
+
+    if (defined $bounce_mailer) {
+	# The eval expands embedded variables like $sender
+	$mailcmd = eval qq/"$bounce_mailer"/;
+    }
+    else {
+	# Painful, but we have to provide some kind of backwards
+	# compatibility and this is what 1.93 used
+	$mailcmd = "/usr/lib/sendmail -f$sender -t";
+    }
+
+    # clean up the addresses, for use on the sendmail command line
+    local(@to) = &ParseAddrs($to);
+    $to = join(", ", @to);
+
+    # open the process
+    if (defined($opt_d)) {
+	# debugging, so just say it, don't do it
+	open(MAIL, ">-");
+	print MAIL ">>> $mailcmd\n";
+    } else {
+ 	if (defined($isParent = open(MAIL, "|-"))) {
+ 	    &do_exec_sendmail(split(' ', $mailcmd))
+ 		unless $isParent;
+ 	} else {
+ 	    &abort("Failed to fork prior to mailer exec");
+ 	}
+    }
+
+    # generate the header
+    print MAIL <<"EOM";
+To: $to
+From: $sender
+Subject: $subject
+
+EOM
+
+    return;
+}

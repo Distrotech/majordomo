@@ -1,0 +1,316 @@
+#
+# A sample configuration file for majordomo.  You must read through this and
+# edit it accordingly!
+#
+
+
+# $whereami -- What machine am I running on?
+#
+$whereami = "example.com";
+
+# $whoami -- Who do users send requests to me as?
+#
+$whoami = "Majordomo\@$whereami";
+
+# $whoami_owner -- Who is the owner of the above, in case of problems?
+#
+$whoami_owner = "Majordomo-Owner\@$whereami";
+
+# $homedir -- Where can I find my extra .pl files, like majordomo.pl?
+# the environment variable HOME is set by the wrapper
+#
+if ( defined $ENV{"HOME"}) {
+     $homedir = $ENV{"HOME"};
+} else {
+     $homedir = "/usr/test/majordomo";
+}
+
+# $listdir -- Where are the mailing lists?
+#
+$listdir = "$homedir/lists";
+
+# $digest_work_dir -- the parent directory for digest's queue area
+# Each list must have a subdirectory under this directory in order for
+# digest to work. E.G. The bblisa list would use:
+# 	/usr/local/mail/digest/bblisa
+# as its directory.
+#
+$digest_work_dir = "/usr/local/mail/digest";
+
+# $log -- Where do I write my log?
+#
+$log = "$homedir/Log";
+
+# $sendmail_command -- Pathname to the sendmail program
+#                      usually /usr/lib/sendmail, but some newer BSD systems
+#                      seem to prefer /usr/sbin/sendmail
+#
+$sendmail_command = "/usr/lib/sendmail";
+# $sendmail_command = "/usr/sbin/sendmail";
+
+# $mailer -- What program and args do I use to send mail to the list?
+# $bounce_mailer -- What is used to send mail anywhere else?
+# The variables $to, $from, $subject, and $sender can be interpolated into
+# this command line.  Note, however, that the $to, $from, and $subject
+# variables may be provided by the person sending mail, and much mischief
+# can be had by playing with this variable.  It is perfectly safe to use
+# $sender, but the others are insecure.
+#
+# Sendmail option -oi:  Do not take a . on a line by itself as the message
+#			terminator.
+# Sendmail option -oee: Force sendmail to exit with a zero exit status if
+#			if it's not going to give useful information.
+#
+$mailer = "$sendmail_command -oi -oee -f\$sender";
+$bounce_mailer = "$sendmail_command -oi -oee -f\$sender -t";
+
+# You can special case the mailer used to deliver outbound mail as follows:
+#
+# To use TLB and use no outgoing alias:
+# if ($main'program_name eq 'mj_resend' && $opt_l eq 'test-list') {
+#   $mailer = "/usr/local/majordomo/tlb /usr/local/lists/${opt_l}.tlb";
+# }
+#
+# To use a different Sendmail queue for this list's mail:
+# if ($main'program_name eq 'mj_resend' && $opt_l eq 'test-list') {
+#   $mailer = "$sendmail_command -oQ /var/spool/listq -f\$sender";
+# }
+
+# You can force Majordomo to delay any processing if the system load is too
+# high by uncommenting the following lines.  THIS ONLY WORKS if your "uptime" 
+# command (usually found in /usr/bin/uptime or /usr/bsd/uptime) 
+# returns a string like:
+#   5:23pm  up  5:51,  9 users,  load average: 0.19, 0.25, 0.33
+#
+#$max_loadavg = 10;                 # Choose the maximum allowed load
+#
+#$uptime = `/usr/bin/uptime` if -x '/usr/bin/uptime';     # Get system uptime
+#$uptime = `/usr/bsd/uptime` if -x '/usr/bsd/uptime';     # or uptime is over here.
+#
+#($avg_1_minute, $avg_5_minutes, $avg_15_minutes) = 
+#    $uptime =~ /average:\s+(\S+),\s+(\S+),\s+(\S+)/;
+#
+#exit 75 if ($avg_15_minutes >= $max_loadavg);           # E_TEMPFAIL
+#
+
+# Set the default subscribe policy for new lists here.  
+# If not defined, defaults to "open", but in today's increasingly
+# imbecile Internet, "open+confirm" or "auto+confirm" is a wiser
+# choice for publicly available Majordomo servers.
+#
+$config'default_subscribe_policy = "open+confirm";
+
+# 
+#  Configure X400 parsing here.  This is functional, but not well tested 
+#  and rather a hack.
+#  By default all addresses that look x400-ish will be checked for a 
+#  @ sign (meaning that it's headed to an smtp->x400 gateway, as well
+#  as the 'c=' and 'a[dm]=' parts, which mean something as well.
+#
+#  If you will be receiving x400 style return addresses that do not have
+#  an @ sign in them indicating an smtp->x400 gateway, set $no_x400at to 1.
+#  Otherwise, leave $no_x400 at 0.
+#
+$no_x400at = 0;
+#
+#  If you will be receiving x400 addresses without the c= or a[dm]= parts
+#  set the $no_true_x400 variable to 1.  This will disable checking for
+#   "c=" and "a[dm]=" pieces.
+#
+$no_true_x400 = 0;
+
+
+#--------------------------------------------------------------------
+#    Stuff below here isn't commonly changed....
+#--------------------------------------------------------------------
+#
+# Majordomo will look for "get" and "index" files related to $list in
+# directory "$filedir/$list$filedir_suffix", so set $filedir and
+# $filedir_suffix appropriately.  For instance, to look in
+# /usr/local/mail/files/$list, use:
+#   $filedir = "/usr/local/mail/files";
+#   $filedir_suffix = "";		# empty string
+# or to look in $listdir/$list.archive, use:
+#   $filedir = "$listdir";
+#   $filedir_suffix = ".archive";
+
+$filedir = "$listdir";
+$filedir_suffix = ".archive";
+
+# What command should I use to process an "index" request?
+#
+$index_command = "/bin/ls -lRL";
+
+# If you want to use FTPMAIL, rather than local access, for file transfer
+# and access, define the following:
+#   $ftpmail_address = "ftpmail\@decwrl.dec.com";
+#   $ftpmail_location = "FTP.$whereami";
+
+# if you want the subject of the request to be included as part of the
+# subject of the reply (useful when automatically testing, or submitting
+# multiple command sets), set $return_subject to 1.
+#
+$return_subject = 1;
+
+# If you are using majordomo at the -request address, set the
+# following variable to 1. This affects the welcome message that is
+# sent to a new subscriber as well as the help text that is generated.
+#
+$majordomo_request = 0;
+
+# If you have lists that have who turned off, but still allow which
+# requests to work for subscribed members, and you don't want to have
+# "which @" to act like a who, the variable $max_which_hits sets the
+# number of hits that are allowed using which before an error is returned.
+# Arguably this should be a per list settable number.
+#
+$max_which_hits = 0;
+
+# Set the umask for the process. Used to set default file status for
+# config file.
+#
+umask(007);
+$config_umask = 007;
+
+# don't change this. It checks to make sure that you have a new enough
+# version of perl to run majordomo. It is in here because this file is
+# used by almost all of the majordomo programs.
+#
+die "Perl version $] too old\n" if ($] < 4.019);
+
+# the safe locations for archive directories
+# None of the parameters that use safedirs are actually used, so 
+# @safedirs is a placeholder for future functionality. 
+# Just ignore it for version 1.90 through 1.94.
+#
+@safedirs = ( );
+
+# Directory where resend temporarily puts its rewritten output message.
+# For the paranoid, this could be changed to a directory that only
+# majordomo has r/w permission to.
+# Uses the environment variable TMPDIR, since that's pretty common
+#
+$TMPDIR = $ENV{'TMPDIR'} || "/usr/tmp";
+
+# Tune how long set_lock tries to obtain a lock before giving up. Each
+# attempt waits 1 to 10 seconds before trying again and waittime is
+# the total minimum time spent trying. This defaults to 600 seconds (5
+# minutes), which translates to no less then 60 nor more than 600 tries.
+#
+# $shlock'waittime = 1200;
+
+# tune the cookie for subscribe_policy=confirm.  Normally this is
+# set to $homedir.  *Don't* make this something like rand(400), 
+# the key isn't saved between sessions.
+#
+# $cookie_seed = "Harry Truman, Doris Day, Red China, Johnnie Ray" . 
+# " South Pacific, Walter Winchell, Joe DiMaggio";
+
+# The maximum character length of the header lines for resend
+#
+$MAX_HEADER_LINE_LENGTH = 128;
+
+# The maximum character length of the _entire_ header for resend
+#
+$MAX_TOTAL_HEADER_LENGTH = 1024;
+
+# List of perl regular expressions that, if found in the headers of a message,
+# will cause the message to be bounced to the list approver.
+# Put each regular expression on a separate line before the "END" mark, with
+# no trailing ";"
+# For example:
+#   $global_taboo_headers = <<'END';
+#   /^from:.*trouble\@hassle\.net/i
+#   /^subject:.*non-delivery notice/i
+#   END
+# NOTE! Using ' instead of " in the 'END' is VERY IMPORTANT!!!
+#
+
+# Administrative checks.  These used to be buried in the resend code
+#
+$admin_headers = <<'END';
+/^subject:\s*subscribe\b/i
+/^subject:\s*unsubscribe\b/i
+/^subject:\s*uns\w*b/i
+/^subject:\s*.*un-sub/i
+/^subject:\s*help\b/i
+/^subject:\s.*\bchange\b.*\baddress\b/i
+/^subject:\s*request\b(.*\b)?addition\b/i
+/^subject:\s*cancel\b/i
+END
+
+# Common things that people send to the wrong address.
+# These are caught in the first 10 lines of the message body 
+# if 'administrivia' is turned on and the message isn't marked approved.
+#
+# The code that catches this should transparently redirect 
+# majordomo commands to majordomo.  That would give the additional
+# advantage of not having to add to this silly construct for
+# each new majordomo command.
+#
+$admin_body = <<'END';
+/\bcancel\b/i
+/\badd me\b/i
+/\bdelete me\b/i
+/\bremove\s+me\b/i
+/\bchange\b.*\baddress\b/
+/\bsubscribe\b/i
+/^sub\b/i
+/\bunsubscribe\b/i
+/^unsub\b/i
+/\buns\w*b/i
+/^\s*help\s*$/i
+/^\s*info\s*$/i
+/^\s*info\s+\S+\s*$/i
+/^\s*lists\s*$/i
+/^\s*which\s*$/i
+/^\s*which\s+\S+\s*$/i
+/^\s*index\s*$/i
+/^\s*index\s+\S+\s*$/i
+/^\s*who\s*$/i
+/^\s*who\s+\S+\s*$/i
+/^\s*get\s+\S+\s*$/i
+/^\s*get\s+\S+\s+\S+\s*$/i
+/^\s*approve\b/i
+/^\s*passwd\b/i
+/^\s*newinfo\b/i
+/^\s*config\b/i
+/^\s*newconfig\b/i
+/^\s*writeconfig\b/i
+/^\s*mkdigest\b/i
+END
+
+# taboo headers to catch
+#
+$global_taboo_headers = <<'END';
+/^subject: ndn: /i
+/^subject:\s*RCPT:/i
+/^subject:\s*Delivery Confirmation\b/i
+/^subject:\s*NON-DELIVERY of:/i
+/^subject:\s*Undeliverable Message\b/i
+/^subject:\s*Receipt Confirmation\b/i
+/^subject:\s*Failed mail\b/i
+/^subject:\s*Returned mail\b/i
+/^subject:\s*unable to deliver mail\b/i
+/^subject:\s.*\baway from my mail\b/i
+/^subject:\s*Autoreply/i
+END
+
+# Taboo body contents to catch and forward to the approval address
+#
+# For example:
+#   $global_taboo_body = <<'END';
+#   /taboo topic/i
+#   /another taboo/i
+#   END
+# NOTE! Using ' instead of " in the next line is VERY IMPORTANT!!!
+#
+$global_taboo_body = <<'END';
+END
+
+# Majordomo will not send replies to addresses which match this.
+# The match is done case-insensitively.
+$majordomo_dont_reply = '(mailer-daemon|uucp|listserv|majordomo|listproc)\@';
+
+1;
+# $Header: /sources/cvsrepos/majordomo/sample.cf,v 1.34 1997/08/27 15:00:31 cwilson Exp $

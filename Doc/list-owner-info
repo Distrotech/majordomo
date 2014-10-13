@@ -1,0 +1,588 @@
+Majordomo address:	# Majordomo@FooBar.COM
+Majordomo-Owner address:# Majordomo-Owner@FooBar.COM
+List Name:		# ListName
+Is resend used:		# yes
+Is the list archived:   # no
+List posting address:	# ListName@FooBar.COM
+List request address:	# ListName-Request@FooBar.COM
+List password:		# whatever
+Digest list name:	# ListName-digest
+Digest list password:	# whatever
+
+Your mailing list has been established.  It is being served by an
+automated mailing list manager that responds to commands emailed to
+the "Majordomo address" listed above.  This message has all the details
+of how to manage your list remotely using Majordomo.  If you have any
+questions, refer them to the Majordomo-Owner address listed above.
+
+				******
+There's a lot of info here, so please read this completely and
+carefully, and save it for future reference.  If you have any questions,
+you should send them to the Majordomo-Owner address above.
+				******
+
+Your list-owner password is shown above.  Keep track of this; you'll
+need it later.  Instructions for changing your password are below.
+
+As soon as possible, please issue a "newinfo" command for your
+list (see below) to create the file that someone will receive when
+they join or ask about your list.
+
+You can issue a "who" command for your list to see who's already on your
+list.  You may or may not already be subscribed to your own list.
+
+================
+The Gory Details
+================
+
+Your mailing list is managed by an automated mailing list management
+program called Majordomo.  Majordomo should free you from dealing
+with most of the administrivia usually associated with running mailing
+lists (adding users, dropping users, etc.).
+
+To submit something to your list, you (or anybody else) should simply
+mail it to the list posting address shown at the top of this file.
+
+To be added to your list, a user simply sends a message to majordomo.
+There are two ways to do it:
+
+address--    To: ListName-request@FooBar.COM
+message--    subscribe
+
+ OR
+
+address--    To: majordomo@FooBar.COM
+message--    subscribe ListName
+
+Majordomo understands several commands, and is not limited to a single
+command per message (it will process commands until reaching
+end-of-message or the command "end").  The command "help" will tell
+you about all the other commands.
+
+Actually, it won't tell you about _all_ the other commands that
+Majordomo understands.  There are several commands there for use by
+list owners such as yourself, which are not advertised to the public.
+All of these commands are password-protected on a list-by-list basis,
+but anyone with a valid list/password combination can invoke these
+commands.  This is not exactly high-tech security, but it's more
+intended to keep annoyance to a minimum than to be foolproof.
+
+The "documented" commands which Majordomo understands and which are
+for everyone to use are:
+
+    subscribe <list> [<address>]
+    unsubscribe <list> [<address>]
+    which [<address>]
+    who <list>
+    info <list>
+    index <list>
+    get <list>
+    lists
+    help
+    end
+
+You can get detailed explanations of all of these by asking for "help"
+from Majordomo (send a message containing just the word "help" as the
+message text to majordomo@FooBar.COM).
+
+The "undocumented" commands for use by list owners are:
+
+    approve <passwd> {subscribe|unsubscribe} <list> [<address>]
+	This is so that you can approve subscription or unsubscription
+	actions that need approval by the list owner.  Note that this
+	is just a standard "subscribe" or "unsubscribe" command prefixed
+	with "approve <password>" (where you substitute the password for
+	your list, which is listed above, for "<password>").
+
+    approve <passwd> who <list>
+	This allows you to get the list of addresses for your
+	anonymous list.  Without the password, even the list owner can
+	not see who is on the list.
+
+    passwd <list> <old_passwd> <new_passwd>
+	This is so you can change the password for your list, if you desire.
+
+    newintro <list> <password>
+	This is so that you can replace the information file that people
+	get when they do "intro <list>" or "subscribe <list>".  It reads
+	everything after the "newintro" command to end-of-message or the
+	word "EOF" on a line by itself as the new intro for the list.
+
+    newinfo <list> <password>
+	This replaces the information file that people get when they do
+	"info <list>".  (This file is also sent by "subscribe <list>" if
+	the intro file doesn't exist.)  This reads everything after the
+	"newinfo" command to end-of-message or the word "EOF" on a line
+	by itself as the new info for the list.
+
+    config <list> <password>
+        Retrieves a self-documenting configuration file for
+        the list <list>.  The <password> can be the password
+        contained in the file <list>.passwd or the
+        admin_password in the configuration file.
+
+    newconfig <list> <password>
+   	Validates and installs a new configuration file.  It reads
+	everything after the "newconfig" command to end-of-message or
+	the word "EOF" on a line by itself as the new info for the
+	list.  The config file is expected to be a complete config
+	file as returned by "config".  Incremental changing of the
+	config file is not yet supported.  As soon as the config file
+	is validated and installed its settings are available for
+	use. This is useful to remember if you have multiple commands
+	in your mail message since they will be subject to the
+	settings of the new config file.  If there is an error in the
+	config file (incorrect value...), the config file will not be
+	accepted and the error message identifying the problem line(s)
+	will be returned to the sender.  Note that only the error
+	messages are returned to the sender not the entire config
+	file, so it would be a good idea to keep a copy of your
+	outgoing email message.
+
+    writeconfig <list> <password> 
+	Write a new config file in standard form. Writeconfig forces a
+	rewrite of the config file with all default values in place (or
+	current values if the config file already exists).  It is
+	useful to use after an upgrade of majordomo since it will add
+	the new keywords for people to change. It also updates the
+	documentation in the file if that has changed.
+
+    mkdigest <digest list name> <password>
+    mkdigest <digest list name> <digest outgoing alias> <password>
+	Generate a digest immediately without waiting to reach the
+	maxlength given in the config file.  The first form will cause the
+        digest to be sent to an alias found by appending "-outgoing" to the
+        digest list name.  Because this can be a security concern, the
+        second form allows specification of the name of the alias that the
+        outgoing digest will be sent to.
+
+
+Configuring Your List
+=====================
+
+You should retrieve the configuration file for your list. To do this,
+send an email message to the majordomo address listed at the top of
+this form. The contents of this message should be:
+
+	config <list> <List password>
+
+Where <list> <List password> are given at the top of the form. You
+will receive a config file that can be used to change the operation of
+your list. If the information at the top of this form shows that
+resend is being used, you want to configure the majordomo and resend
+subsystems. Otherwise you only have to configure those items that are
+associated with the majordomo system.
+
+The configuration file is meant to be self documenting. Once you have
+completed all of the changes to the config file, You should use the
+newconfig command (described above) to put a new configuration file in
+place.
+
+If you have a digest version of your list, you should retrieve the
+config file for the digest as well using:
+
+	config <Digest List Name> <Digest list password>
+
+and configure the parameters for the digest and majordomo subsystems.
+
+
+Regular Expressions
+===================
+
+For some of the configuration options, a rudimentary knowledge of perl
+style regular expressions will help you run Majordomo through its
+tricks.  A regular expression is a concise way of expressing a pattern
+in a series of characters.  The full power of regular expressions can
+make some difficult tasks quite easy, but we will only brush the
+surface here.
+
+The character / is used to mark the beginning and end of a regular
+expression.  Letters and numbers stand for themselves.  Many of the
+other characters are symbolic.  Some commonly used ones are:
+
+  \@    the `@' found in nearly all addresses; it must be preceeded by a
+        backslash in later versions of perl to avoid errors
+  .     (period) any character
+  *     previous character, zero or more times; note especially...
+  .*    any character, zero or more times
+  +     previous character, one or more times; so for example...
+  a+    letter "a", one or more times
+  \     next character stands for itself; so for example...
+  \.     literally a period, not meaning "any character"
+  ^     beginning of the string; so for example...
+  ^a    a string beginning with letter "a"
+  $     end of the string; so for example...
+  a$    a string ending with letter "a"
+
+Example 1.
+        /cs\.umb\.edu/
+
+Notice the periods are preceded by a backslash to make them be
+literally periods.  This matches any string containing cs.umb.edu
+such as:
+	cs.umb.edu
+	foo.cs.umb.edu
+	user@foo.cs.umb.edu
+	users%foo.cs.umb.edu@greatcircle.com
+
+Example 2.
+	/rouilj\@.*cs\.umb\.edu/
+
+The `@' has special meaning to later versions of perl and must be prefixed
+with a backslash to avoid errors.  The string ".*" means "any character,
+zero or more times".  So this matches:
+	rouilj@cs.umb.edu
+	rouilj@terminus.cs.umb.edu
+	arouilj@terminus.cs.umb.edu@greatcircle.com
+
+but it doesn't match
+	rouilj@umb.edu
+	brent@cs.umb.edu
+
+Example 3.
+	/^rouilj\@.*cs\.umb\.edu$/
+
+This is similar to Example 2, and matches the same first two strings:
+	rouilj@cs.umb.edu
+	rouilj@terminus.cs.umb.edu
+
+but it doesn't match
+	arouilj@terminus.cs.umb.edu@greatcircle.com
+
+because the regular expression says the string has to begin with 
+letter "r" and end with letter "u", by using the ^ and $ symbols, and 
+neither of those is true for arouilj@terminus.cs.umb.edu@greatcircle.com.
+
+Example 4.
+        /.*/
+
+This is the regular expression that matches anything.
+
+Example 5.
+        /.\*rouilj/
+
+Here the * is preceded by a \, so it refers literally to an asterisk
+character and not the symbolic meaning "zero or more times".  The . still
+has its symbolic meaning of "any one character", so it would match for
+example
+        a*rouilj
+        s*rouilj       
+
+It would not match this because the . by itself implies one character:
+        *rouilj
+
+Normally all matches are case sensitive; you can make any match case
+insensitive by appending an `i' to the end of the expression.
+
+Example 6.
+       /aol\.com/i
+
+This would match aol.com, AOL.com, AoL.cOm, etc.  Removing the `i':
+
+      /aol\.com/
+
+would match aol.com but not AOL.com or any other capitalization.
+
+
+To be on the safe side put a \ in front of any characters in the
+regular expressions that are not numbers or letters.  In order to put
+a / into the regular expression, the same rule holds: precede it
+with a \.  Thus, with \ in front of the / and = characters, this
+        /\/CO\=US/
+
+matches /CO=US and may be a useful regular expression to those of you
+who need to deal with X.400 addresses that contain / characters.
+
+
+Approval
+========
+
+When Majordomo requests your approval for something, it sends you a
+message that includes a template of the approval message; if you concur,
+you simply need to replace "PASSWORD" in the template with your list
+password, and send the template line back to Majordomo.
+
+The requests for approval that Majordomo generates all start with
+"APPROVE" in the "Subject:" line.  
+
+You aren't limited to approving only things to Majordomo requests
+approval for.  You can approve any "subscribe" or "unsubscribe" request,
+regardless of whether Majordomo has requested this approval, with an
+"approve" command.  Thus, you can subscribe or unsubscribe people from
+your list without them having to send anything to Majordomo; just
+send an appropriate "approve PASSWORD subscribe LIST ADDRESS" or
+"approve PASSWORD unsubscribe LIST ADDRESS" command off to Majordomo.
+
+If you use a mailer which is capable of sending a message to an external
+program, can run perl and can run sendmail or a program capable of behaving
+like it for the purposes of sending mail, then all you have to do is send
+the entire approval message (including all of the headers, which are very
+important and which are automatically removed by some mailers unless
+configured to do otherwise) to the approve script.  Approve looks for a
+file called ".majordomo" in your home directory to find the approval
+password for your list.  The format of this file is given in the following
+excerpt from the approve manual page:
+
+     approve assumes that the approve password for each  list  is
+     the  same  as the approval password used by resend, and that
+     this password is stored in a file called .majordomo  in  the
+     user's home directory.  The file has the following format:
+
+          this-list    passwd1   Majordomo@This.COM
+          other-list   passwd2   Majordomo@Other.GOV
+
+     The first column specifies the name of the mailing list, the
+     second  column  specifies  the list-owner's password for the
+     given list,  and  the  third  column  specifies  the  e-mail
+     address  of  the associated Majordomo server.  It is assumed
+     that the value in the  third  column  is  an  Internet-style
+     "something@somewhere"  address, and that postings for "List"
+     should be sent to "List@somewhere".  Since  this  file  only
+     needs  to be read by the user, it should be mode 600 to pro-
+     tect the passwords.
+
+If you have the necessary environment for running the approve script,
+contact the Majordomo owner at the site that serves your list and request
+it.
+
+
+Bounced Messages
+================
+
+Majordomo may bounce certain messages that people attempt to post to your
+mailing list.  These messages may be bounced because they appear to be
+administrative requests (i.e., someone mailed a request to subscribe or
+unsubscribe to the posting address rather than to Majordomo or to the
+-request address), because they are too long, because they match strings
+that you or the list server owner has defined as being "taboo", or for any
+of a number of other reasons, many of which may seem annoying but have been
+decided upon as being useful in stopping unwanted messages from making it
+onto your list.  (These are often configurable, so if you find a check to
+be too restrictive you can generally turn it off.)  Note also that the
+bounces mentioned here are not the same as the errors that will be returned
+by various mail servers when addresses or hosts are unreachable.  Those are
+generally referred to as bounces, also; sorry for the confusion.
+
+Majordomo will forward these messages to you in another message whose
+subject line begins with the word "BOUNCE"; the subject line will also
+indicate the name of the list the message was bounced from (in case you
+manage more than one list) and the reason the message was bounced.
+
+If you decide that the message is OK and should not have been bounced, then
+you can cause Majordomo to post it anyway by sending the message back to
+the posting address (NOT to the Majordomo address) with a special
+"Approved: password" header.  There are two ways to do this; the method you
+use depends on your having access to and the ability to run the approve
+script mentioned in the previous section.  If you can run approve it is
+recommended that you do so, as this method is much less prone to errors and
+will reduce the time you spend moderating your list.
+
+If you cannot run the approve script, you can manually approve the
+message.  To do so, follow the following directions _exactly_:
+
+    1)  Save the original message (the body of the message you received
+	from Majordomo) in a file.  The portion you need will consist of
+        the headers of the original message, followed by a single blank
+        line, followed by the text of the original message.  You do not
+        need to include any of the headers of the message which contained
+        the original message.  Here's a quick example:
+
+From: majordomo@list.server         \
+To: your-list-approval@list.server  | Don't want these headers
+Subject: BOUNCE: taboo_header found /
+                                    - Blank line
+>From list-member@her.site  date    \ 
+Received: some long routing info    | Headers of original message;
+From: list-member@her.site          | You want these.  It's OK if you
+To: your-list@list.server           | don't have the first line.
+Subject: Just a message             /
+                                    - Blank line, you _must_ have this!
+Hello.  I'm just writing to         \
+consume some bandwidth and          | Message body; include all of
+take up space in your mail          | this.
+spool!                              /
+
+        Basically you want everything after (and not including) the first
+        blank line.
+
+    2)  Edit the file to insert a line that says "Approved: password" (where
+	"password" is the password for your list) at the top, before the
+	original message, with absolutely no intervening space:
+
+Approved: sekrit
+>From list-member@her.site  date
+Received: some long routing info
+From: list-member@her.site
+To: your-list@list.server
+Subject: Just a message
+
+Hello.  I'm just writing to
+consume some bandwidth and
+take up space in your mail
+spool!
+
+    3)  Send this edited file back to the posting address for your list (NOT
+	to Majordomo).  You should make sure that your mailer doesn't try
+        to do anything like include your prepared mail as an attachment,
+        encode it somehow, indent every line, or add anything extra to the
+        beginning or end of the message.  There are mailers that will do
+        pretty horrible things to messages before they are sent; you should
+        take care that you aren't using one or, if you are, you have it
+        configured to pass your text on unadulterated.
+
+This time around, Majordomo will notice the "Approved:" line and check it
+against your list password.  If it matches, Majordomo will strip off the
+header of your message and the "Approved:" line (leaving just the original
+message), and send the original message on through.
+
+Even your own messages bay be bounced to you for approval.  To send out your
+own message without server checks (perhaps you know it contains something
+the list server will complain about) you can pre-approve the message one of
+the two following ways:
+
+If you're using a mailer that can add additional headers, add one like the
+following:
+
+Approved: sekrit
+
+It's precise location within the headers is not important.
+
+If your mailer does not allow you to add additional headers, you can add
+the line:
+
+Approved: sekrit
+
+as the first line of the message, followed by a blank line (which is
+required for your message to be sent properly) followed by the text of your
+message.  The Approved: line and one following blank line will be deleted
+and the message will be passed without being checked.  The blank line is
+important because it is used to differentiate between a pre-approval and the
+approval of a bounced message, outlined above.
+
+
+Moderation
+==========
+
+If your list is moderated, (the moderate parameter in the config
+file is yes) then messages without an "Approved:" line are bounced,
+just as described above.  To cause them to be posted to the list, you
+add a valid "Approved:" line and send them back, just as described
+above.
+
+Again, the "approve" program automates all this if you wish to use it.  You
+can also use the above pre-approval method to send your own messages
+without them being bounced back to you.
+
+If you have any questions about all of this, send them to the Majordomo-Owner
+address shown at the top of this file.
+
+
+Restricting Posting
+===================
+
+An easier alternative to moderation is to restrict who can post to the
+list, which can be done with the restrict_post configuration variable.
+The variable requires a file listing the people who can post.
+
+The most common case is to limit posting to people who are subscribed
+to the list.  This keeps out advertisements and other junk mail sent
+by non-subscribers.  Since majordomo already has a file of subscribers,
+you don't need to create and maintain a file, so it's easy to set.
+
+Change the restrict_post line to this, where <listname> is the name of
+your list:
+
+restrict_post = <listname>
+
+If you want to restrict posting to any other set of people, you'll
+need to ask majordomo-owner for help.  Unfortunately there's no way to
+tell majordomo about keeping another file of people who are allowed to
+post, so a file would have to be set in place "by hand".  Some future
+release of majordomo may provide a way to do this automatically.
+
+
+Archive
+=======
+
+Archiving has to be set or unset by the system administrators reached
+at majordomo-owner@FooBar.COM.  It is not the default but must be
+requested.  Here is what can be done.
+
+Archive files can be split by years, months, or days.  This means all
+mail to the list for one of those periods of time will be collected
+into one archive file.  People who want to get archived mail will need
+to get one such file as a unit.
+
+We are running an indexer program nightly.  It produces two index files
+that subscribers can get: CONTENTS lists what subject lines are in each
+archive file; TOPICS lists what archive files contain each subject.
+
+Subscribers use the "get" command to see files in the archives.  Examples:
+  get ListName CONTENTS            # gets the CONTENTS file
+  get ListName ListName.9507       # gets the July 1995 archive file
+
+Access to archives is controlled by the get_access variable in the
+config file.  The default "list" means they must be subscribers to get 
+archived files.
+
+Subscribers can also get a list of filenames and dates in the archive
+by sending an "index" command.  Example:
+  index ListName
+
+This is controlled by the config file variable index_access similarly.
+
+Notes on archiving.
+
+ -  It's possible for the archive to contain files besides the indexes
+    and the archive files of messages.  However, majordomo offers no
+    method for you to put them there.  In an unusual case you can ask 
+    majordomo-owner to put a file there for you.  
+
+ -  Archiving could be accomplished by directing a copy of messages to
+    some other place besides the majordomo archive.  Ask, if you have
+    something in mind.
+
+
+Digest
+=======
+
+A digest version of a list is a way to reduce the number of messages sent
+from Majordomo to subscribers.  Normally, each message to the list is
+remailed to all the subscribers, but with a digest, several messages are
+collected into a batch and then sent together as one message.  This does
+not reduce the total size too much, although there are fewer mail header
+lines-- the main purpose is to reduce the number of separate messages.
+This actually helps the mail systems at both ends, and may help subscribers
+reduce clutter in their mailboxes.
+
+A Majordomo digest is actually a separate mailing list.  The digest of
+ListName would normally be called ListName-digest.
+
+People subscribe independently to ListName and ListName-digest.  
+Very likely no one would want to be on both lists.  To change between 
+ListName and ListName-digest, a subscriber needs to unsubscribe
+from one list and subscribe to the other.  This can be done with one
+message to majordomo@FooBar.COM with two command lines in it, e.g.:
+  unsubscribe ListName
+  subscribe ListName-digest
+
+Remember that ListName-digest will have its own information file and
+configuration file.  Change them, if you want to, when you change the
+same files for ListName.
+
+Majordomo will send a digest automatically when the size of the digest
+exceeds the size given as max_length in the configuration file of the
+digest list.  The default max_length is 40 K.  Thus the interval
+between digests can vary, but they will be of a predictable size.
+
+The listowner can also tell Majordomo to make a digest (meaning, compile
+and send out a digest) by sending the command mkdigest at any time:
+  mkdigest ListName-digest password
+
+A daily digest (or for some other time period) could be achieved by
+setting the max_length high enough so as not to be reached normally in
+a day, and then setting up a job to run daily that sends mail to
+Majordomo with the mkdigest command.  On a unix system, give the
+commands "man crontab" and "man 5 crontab" at the shell for an
+explanation of such jobs, or ask majordomo-owner for help.
+

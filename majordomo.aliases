@@ -1,0 +1,25 @@
+#
+# The aliases file for majordomo.  This works best if you tell sendmail about it
+# in your sendmail.cf file (either /usr/lib/sendmail.cf or /etc/sendmail.cf).  
+#
+# You need to be running a recent (8.6, at least) version of sendmail; one that 
+# groks multiple alias files.
+#
+# Look for a line that says  "OA/usr/lib/aliases" or somesuch, and add a line below
+# it, w/o the leading # sign, that looks like this:
+# 
+# OA/usr/test/majordomo/majordomo.aliases
+#  
+# After doing this, you should refreeze the sendmail cf via '/usr/lib/sendmail -bz'  and 
+# restart sendmail.
+#
+
+majordomo:  "|/usr/test/majordomo-1.94.5/wrapper majordomo"
+majordomo-owner: you
+owner-majordomo: you
+
+test:		"|/usr/test/majordomo-1.94.5/wrapper resend -l test test-list"
+test-list:	:include:/usr/test/majordomo-1.94.5/lists/test
+owner-test:	you
+test-owner:	you
+test-request:	you

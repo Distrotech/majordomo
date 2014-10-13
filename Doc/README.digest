@@ -1,0 +1,110 @@
+This digestifier follows RFC 934, so it should be compatible with
+almost any digest-digester that comes along.
+
+This creates a properly formatted digest and mails it.  It automatically
+increments the issue number, but not the volume number.
+
+The digest script has two modes: receiving messages and creating a
+digest.  It receives email messages via stdin and places them in
+a work directory.  In digest-creation mode, it takes those messages
+from the work directory, assembles them into a digest in an archive
+directory, and mails the digest.
+
+If there are no messages in the work directory, it exits saying,
+"No messages to process."
+
+One of the digest's required configuration values is the size limit
+in characters.  If you use digest's -r option to receive digests, a
+digest will automatically be sent whenever this limit is passed.
+
+There are also two optional parameters that can cause digests to
+be created and sent:  the digest length limit in lines, and the
+age in days of the oldest undigested message.
+
+These values are checked every time a message is received (if
+you are using the -r option).
+
+
+There are two ways of setting up a digest: as a majordomo list,
+or as a standalone.  All of the files in this directory (excepting
+the digest script) are for the standalone configuration.  They are
+IGNORED by majordomo.
+
+If you are setting up a majordomo digest list, ALL your configuration
+values come from majordomo.cf and the digest list's config file
+(whatever-digest.config), NOT from the files in this directory.
+
+To set up a majordomo digest list, you need
+
+    - digest work directory for incoming messages.
+      This must be under the root $digest_work_dir from majordomo.cf
+    - digest archive directory for completed digests.
+      This must be under the root $filedir from majordomo.cf,
+      and the directory name must end in $filedir_suffix.
+    - the majordomo digest list.  This is just like an ordinary
+	  majordomo list, except that you need to set the various
+	  digest parameters in the list's configuration file
+      ($listdir/whatever-digest.config).  They are well commented.  
+	  Make sure that in the message_footer and message_fronter 
+	  that you begin all lines that need to be blank with a '-', 
+	  and if you want the line to begin with whitespace, precede 
+	  the whitespace with a '-'.
+    - aliases for the digest.  There are examples in aliases.slice.
+
+You can set up a cron job to make the digests go at regular intervals.
+If you take incoming messages with the -r option, digests will also
+be created whenever there are long enough messages, or whenever the first
+message is old enough.  The -R option will prevent this from happening;
+it just accepts messages, so digests can be mailed whenever you or your
+cron job say.  The -m option (which is used by majordomo's mkdigest
+command) will make a digest if there are ANY messages.  The -p option
+will only make a digest if there are enough messages, or if the
+first message is old enough.  Both the -m and -p options could cause
+more than one digest to be created and sent.
+
+
+If you only want to set up a majordomo digest, stop reading now,
+because the rest of this file is about the standalone configuration.
+
+------------------------------------------------------------------------------
+
+If you are setting up a standalone digest, ALL of your configuration
+values come from the digest configuration file.  There is a sample
+config file in this directory (firewalls-digest.cf).  The default
+name for the configuration file is ~/.digestrc, which could make
+it easy to pipe mail from your mail reader into the digest, if
+that's how you want to feed it. 
+
+To make a standalone digest, you need these things:
+
+	- digest work directory for incoming messages
+	- digest archive directory for completed digests
+	- a digest config file, ~/.digestrc by default (sample in
+	  firewalls-digest.cf)
+	- a digest header file (sample is firewalls-digest.header)
+	- a digest trailer file (sample is firewalls-digest.trailer)
+	- a digest volume-number file (sample is firewalls-digest.vol)
+	- a digest issue-number file (sample is firewalls-digest.num)
+	- RFC-822 messages, stored one per file
+
+The config file is commented, and the format should be obvious.  The
+only two things to watch for in the header and trailer files are:
+
+	- a line containing _SUBJECTS_ in the header file will be
+	  replaced by lines consisting of all of the subjects in the
+	  included messages, in order, indented as far as _SUBJECTS_ is.
+
+	- lines beginning with "-" in these files will not be
+	  properly encapsulated, and will be interpreted by
+	  undigesting software as message breaks.
+
+You need to pipe the incoming messages to "digest [-c config_file]"
+for example:
+
+	cat email_message | digest -c /usr/local/digest/banjo.cf
+
+And you can use either the -m or -p option to build a digest:
+
+	digest -m -c /usr/local/digest/banjo.cf
+
+for example.

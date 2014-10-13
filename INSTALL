@@ -1,0 +1,187 @@
+	      _  _ ____  _ ____ ____ ___  ____ _  _ ____
+	      |\/| |__|  | |  | |__/ |  \ |  | |\/| |  |
+	      |  | |  | _| |__| |  \ |__/ |__| |  | |__|
+
+		           Release 1.94.5
+			       INSTALL
+  --------------------------------------------------------------------------
+
+-> Current users of Majordomo whom are upgrading will want to    <--
+-> read the NEWS and  Changelog for details on what has changed  <--
+-> between versions of Majordomo.			         <--
+
+  --------------------------------------------------------------------------
+
+** SECURITY ALERT **
+   
+   The default installation of Majordomo, including the checks that
+config-test does, WILL NOT RESULT IN A SECURE INSTALLATION.  In
+particular, the majordomo home directory and the "wrapper" program
+are, by default, accessible to any user.  These open privileges can be
+(mis)used to change list membership, list configuration details, forge
+email, perhaps even create and/or delete lists, and anything else that
+the majordomo user has permissions to do.
+   
+   If Majordomo is *NOT* installed on a secured system with controlled
+access (and if you are paranoid, even if it is), you will need to take
+additional steps to prevent access to the majordomo directories.
+Usually, changing the privileges of the majordomo home directory to be
+0750 fixes these problems, but creates the additional burden of
+needing to configure the MTA (sendmail, qmail, exim) properly so that
+it can read and execute "wrapper".  Such configuration is beyond the
+scope of this install document, and is left to the FAQ (Doc/FAQ,
+Doc/majordomo-faq.html) and the support group
+majordomo-users@greatcircle.com to answer.
+
+** SECURITY ALERT **
+   
+
+UPGRADING:
+----------
+
+If you're upgrading from a release before 1.94.4, you'll need to either do
+a clean install or patch your 1.94.X to 1.94.4 using the patches found at
+ftp://ftp.greatcircle.com/pub/majordomo.  Then...
+
+Folks upgrading from 1.94.4 to 1.94.5 have three options:
+
+1) A clean install.  See below.
+
+2) Patch your _distribution_ of 1.94.4 to 1.94.5:
+
+	% cd distribution/majordomo-1.94.4
+	% patch < ...../patches/majordomo-1.94.5/1.94.4-to-1.94.5-patch
+
+   If there are no *.rej files, do a 'make install'.  Otherwise, examine
+   each .rej file and merge the changes in by hand.
+
+3) Patch your _installation_ of 1.94.4 to 1.94.5:
+
+	% cd /usr/majordomo (ie, where you've installed majordomo)
+	% patch < ....../majordomo-1.94.5/patches/1.94.4-to-1.94.5-installed-patch
+
+   If there are no *.rej files, you're done!  Otherwise, examine 
+   each .rej file and merge the changes in by hand.
+
+  --------------------------------------------------------------------------
+
+Steps to do a clean installation of Majordomo:
+
+1) Pick a group and user ID for Majordomo to run under.  Usually this
+   is "majordomo.daemon".  If you're this group, you can do all the
+   majordomo management functions (creating new lists, etc.) without
+   having to "su" to Majordomo.  You can create and use a group other
+   id than "daemon" if you want, but if you do, that UID needs to
+   be a "trusted" user as far as Sendmail is concerned (i.e., the user
+   name needs to appear on a "T" line in your sendmail.cf file).
+
+
+2) Choose a directory for Majordomo to install into. This must _NOT_
+   be the same directory you untarred the Majordomo files into or a
+   symbolic link to it.
+
+3) Edit the Makefile, defining where Perl and the C compiler are, the
+   Majordomo home directory (chosen in step 2), the location of the
+   manual pages, the user and group that Majordomo will run under, and
+   the permissions for the various files and directories. If running on
+   a non-POSIX system, comment out the POSIX SECTION in the Makefile.
+   Under POSIX, wrapper must be setuid "root", even if the programs will
+   be running as something other than "root" (i.e., "daemon"), or it
+   won't work. The symptom of this is that Perl starts complaining about
+   security violations and "unsafe usages".
+
+4) Edit majordomo.cf. 
+
+   If this is a new install, copy sample.cf to majordomo.cf first.
+
+   This .cf file is "require"ed into majordomo, so it needs to be valid
+   Perl.  Here are the important variables to set:
+
+    $whereami		What machine am I on?
+    $whoami		Who do users send requests to me as?
+    $whoami_owner	Who is the owner of the above, for problems?
+    $homedir		Where can I find my extra .pl files?
+    $listdir		Where are the mailing lists?
+    $log		Where do I write my log?
+    $sendmail_command   Where the sendmail program resides.
+    $mailer		What program and args do I use to send mail to the
+                          lists?
+    $bounce_mailer      What program and args do I use to send administrative
+                          messages?
+
+   If this is an upgrade, examine sample.cf for new configuration 
+   variables to place in your existing majordomo.cf.  Alternately, running
+   config-test after the installation is complete will show all the
+   variables that are missing.
+
+5) Do a 'make wrapper' to verify that the wrapper program compiles
+   cleanly.  
+
+6) Do a 'make install' to install the Majordomo programs.  This must be
+   done either as root or as the Majordomo user in order to properly set
+   the ownership of the various files and directories.
+
+7) Do a 'make install-wrapper' as root to install the wrapper.  This must
+   be done as root because wrapper must be installed setuid and on POSIX
+   systems must be owned by root.  The wrapper takes care to severely
+   restrict the programs which may be run by it and further restricts the
+   environment those programs run with.
+
+8) Add the majordomo-related aliases to your Sendmail alias file.
+   This can either be /etc/aliases, or if you are using a more recent
+   version of Sendmail (8.6 or above) a cleaner approach is to add an
+   alias file specifically for Majordomo aliases by adding another
+   "OA" line to /etc/sendmail.cf:
+
+   OA/path/to/majordomo/majordomo.aliases
+
+   If you use the M4 configuration system of recent sendmails, you can add
+   the following line to your .mc file to achieve the same effect:
+
+   define(`ALIAS_FILE',`/etc/aliases,/path/to/majordomo/majordomo.aliases')
+
+   Whichever method chosen, add the following aliases for Majordomo
+   itself:
+
+    majordomo: "|/path/to/majordomo/wrapper majordomo"
+    owner-majordomo: you,
+    majordomo-owner: you
+
+   Note the program name (majordomo) after wrapper must not be a full path
+   name.  Also look at 'majordomo.aliases' for additional examples.
+
+9) Chdir to the Majordomo home and (as a regular, unprivileged user, not
+   the Majordomo user or root) run the configuration test script:
+
+      % cd /path/to/majordomo
+      % ./wrapper config-test
+
+   This should check for the proper configuration of Majordomo. Fix
+   any errors, and run again.  When the process is complete and there are
+   no errors, config-test will offer to register your installation of
+   Majordomo by sending information on your operating system, your Perl
+   version, and the address of the Majordomo owner to the Majordomo
+   maintainers.  A copy of the message will also be sent to the Majordomo
+   owner at your site.
+
+   Note that if you have a setup which uses more than one configuration
+   file, you can have config-test check them by calling it with the name of
+   an alternate configuration file, like so:
+
+      % ./wrapper config-test alternate.cf
+
+10) Test the configuration again by creating an empty file 'test' in
+   $listdir, and issue a 'lists' command to Majordomo:
+
+      % touch /path/to/majordomo/lists/test
+      % echo 'lists' | mail majordomo
+
+   If everything is working correctly, you should get a message back
+   from Majordomo, and not Mailer-Daemon.
+
+11) Browse the Frequently Asked Questions (Doc/FAQ), it can answer 
+    many questions that you might have.
+
+That's it!  To create new lists, read the NEWLIST file.
+
+

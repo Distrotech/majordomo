@@ -1,0 +1,202 @@
+#!/bin/perl
+
+# move problem addresses from <list> to "bounces"
+#
+# Assumes that the "approve" password for each list is stored in a file
+# called ".majordomo" in the user's home directory, in the following format:
+# 
+# 	List		Password	Majordomo-Address
+# 
+# When you bounce someone from a list, it looks up that lists's password
+# and Majordomo-Address (the address of the Majordomo server serving that
+# list) in the .majordomo file, and looks for another list named "bounces"
+# with the same Majordomo-Address.
+# 
+# Here's an example of what a .majordomo file should look like:
+# 
+# 	this-list	passwd1		Majordomo@This.COM
+# 	other-list	passwd2		Majordomo@Other.GOV
+# 	bounces		passwd3		Majordomo@This.COM
+# 	bounces		passwd4		Majordomo@Other.GOV
+# 
+# A command of "bounce this-list user@fubar.com" will mail the
+# following message to Majordomo@This.COM:
+# 
+# 	approve passwd1 unsubscribe this-list user@fubar.com
+# 	approve passwd3 subscribe bounces user@fubar.com (930401 this-list)
+# 
+# Note that the date and the list the user was bounced from are included
+# as a comment in the address used for the "subscribe bounces" command.
+# 
+# Brent Chapman                                   Great Circle Associates
+# Brent@GreatCircle.COM                           1057 West Dana Street
+# +1 415 962 0841                                 Mountain View, CA  94041
+
+# $Source: /sources/cvsrepos/majordomo/bounce,v $
+# $Revision: 1.11 $
+# $Date: 2000/01/07 14:09:24 $
+# $Author: cwilson $
+# $State: Exp $
+#
+# $Locker:  $
+#
+
+$MAILER = "/usr/lib/sendmail";
+
+$default_maxage = 21;
+
+# if this program is called unsub, then only unsubscribe, don't add to bounces
+
+($basename = $0) =~ s!.*/!!;
+if ($basename =~ /unsub/) {
+    $unsub_only = 1;
+}
+
+while ($ARGV[0] =~ /^(-.*)/ && shift) {
+    if ($1 eq "-f") {
+	$opt_f = shift;
+    }
+    elsif ($1 eq "-d") {
+	$debug = 1;
+    }
+    elsif ($1 eq "-unsub") {
+	$unsub_only = 1;
+    }
+    elsif ($1 eq "-expire") {
+	$expire = 1;
+    }
+    elsif ($1 eq "-majordomo") {
+	$majordomo = shift;
+    }
+    elsif ($1 eq "-maxage") {
+	$maxage = int(shift);
+	if ($maxage <= 0) {
+	    warn "$maxage is not a positive integer; ignoring.\n";
+	    $maxage = 0;
+	}
+    }
+    else {
+	warn "bad option: $1\n";
+	&usage();
+    }
+}
+
+if (! defined($opt_f)) {
+    $opt_f = "$ENV{HOME}/.majordomo";
+}
+
+if ($maxage && !$expire) {
+    warn "Can't specify -maxage without -expire\n";
+    &usage();
+}
+
+&read_config();
+
+if ($expire) {
+    if ($maxage <= 0) {
+	$maxage = $default_maxage;
+    }
+    # convert maxage in days to seconds
+    $maxage *= 24*60*60;
+    $list = 'bounces';
+    if ($majordomo) {
+	$majordomo{$list} = $majordomo;
+    }
+}
+else {
+    $list = shift(@ARGV);
+    $list =~ tr/A-Z/a-z/;
+    $list =~ s/\@.*//;
+
+    $list_passwd = $passwd{$list};
+    if (! $list_passwd) {
+	die("no password for list $list; stopping");
+    }
+    $maxage = 0;
+}
+
+$bounce_passwd = $passwd{"bounces\@$majordomo{$list}"};
+if (! $unsub_only ) {
+      if (! $bounce_passwd) {
+      die("no password for list bounces; stopping");
+      }
+}
+
+($sec,$min,$hour,$mday,$mon,$year) = localtime(time-$maxage);
+$year += 1900;
+
+if ($debug) {
+    open(MSG, ">&STDOUT");
+} else {
+    open(MSG, "|$MAILER $majordomo{$list}") || 
+	die("open(MSG, \"|$MAILER $majordomo{$list}\"): $!\nStopped");
+}
+
+print MSG "To: $majordomo{$list}\n";
+print MSG "Subject: expired bounces entries\n" if $expire;
+print MSG "\n";
+
+if ($expire) {
+    $expire_date = sprintf("%02d%02d%02d", $year, $mon+1, $mday);
+    while (<>) {
+	# bounce format is user.name (yymmdd listname), we want yymmdd
+	next unless /.*\s\((\d+) \w.*\)/;
+	if ($1 <= $expire_date) {
+	    printf MSG "approve %s unsubscribe bounces %s", $bounce_passwd, $_;
+	}
+    }
+} else {
+    foreach (@ARGV) {
+	printf MSG "approve %s unsubscribe %s %s\n", $list_passwd, $list, $_;
+	if (! $unsub_only) {
+	    printf MSG "approve %s subscribe bounces %s (%02d%02d%02d %s)\n",
+		$bounce_passwd, $_, $year, $mon+1, $mday, $list;
+	}
+    }
+}
+close(MSG);
+
+exit 0;
+
+sub read_config {
+    open(CONF, $opt_f) || die("open(CONF, \"$opt_f\"): $!");
+    while (<CONF>) {
+	chop;
+	s/#.*//;
+	next if /^\s*$/;
+	local($list,$passwd,$majordomo) = split(' ',$_,3);
+	$list =~ tr/A-Z/a-z/;
+	$majordomo =~ tr/A-Z/a-z/;
+	if (! defined($passwd{$list})) {
+	    $passwd{$list} = $passwd;
+	    $majordomo{$list} = $majordomo;
+	}
+	$passwd{"$list\@$majordomo"} = $passwd;
+    }
+    close(CONF);
+}
+
+sub usage {
+    print STDERR <<EOT;
+Usage: $0 [-d] [-f <config-file>] [-unsub] <list> <user>
+       $0 [-d] [-f <config-file>] -expire [-maxage <days>]
+          [-majordomo <addr>] <bounce_entries>
+
+Options:
+    -d			Debug: print what would be done, but don't do it.
+    -f config_file	Specify a list/passwd file (default ~/.majordomo)
+
+    -unsub		Unsubscribe the user from the list, but don't add
+			to bounces.  On by default if the program name
+			contains "unsub".
+    
+    -expire		Expire entries from the specified bounces list.
+    -maxage days	Expire entries older than maxage days (default
+			$default_maxage days).
+    -majordomo addr	Send expired bounces to this majordomo (default is
+			the majordomo corresponding to the first 'bounces'
+			list).
+    bounce_entries	A file containing bounce entries (eg. the bounces list)
+EOT
+    exit(1);
+}

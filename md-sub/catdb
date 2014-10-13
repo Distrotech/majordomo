@@ -1,0 +1,20 @@
+#!/usr/local/gnu/bin/perl
+#
+# catdb
+#
+# Author: John Orthoefer <jco@direwolf.com>
+# Date: 7 Jan 1996
+# 
+# Introduction
+#   This program dumps out a dbm file so you can see what the keys are and 
+#   what the values are.  
+
+dbmopen( %DB, "$ARGV[0]", 0666);
+
+foreach $i (keys %DB) {
+    print "$i = \"$DB{$i}\"\n";
+}
+
+dbmclose( DB);
+
+exit 0;

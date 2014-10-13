@@ -1,0 +1,105 @@
+
+QUICK DIGEST SETUP:
+
+For the purpose of example, let's say that you have a majordomo list
+called "banjo" and that you want to create "banjo-digest".
+
+1.  You need to create two directories: the digest's work directory
+	and the digest's archive directory.  They CAN'T be the same directory.
+
+    Where should these directories be created?  Look in your majordomo.cf
+    file to see how these three variables are defined: $digest_work_dir,
+    $filedir, $filedir_suffix.  Let's say they look like this:
+
+        $digest_work_dir = "/usr/local/mail/digest";
+        $filedir = "/usr/local/mail/files";
+        $filedir_suffix = ".archive";
+
+    That being the case, you must create these two directories:
+
+        /usr/local/mail/digest/banjo-digest
+        /usr/local/mail/files/banjo-digest.archive
+
+    The first is the work directory, the second is the archive directory.
+
+    Make sure that majordomo has write permission on both directories.
+
+
+2.  You must create a majordomo list called "banjo-digest".
+
+    In most respects it is just like any ordinary list, but when you
+    set up the configuration file (banjo-digest.config), you will
+    have to configure these parameters:
+
+        digest_issue = 1
+        digest_name = Banjo Digest
+        digest_volume = 1
+        digest_maxdays =
+        digest_maxlines =
+        maxlength = 40000
+        message_footer << END
+        END
+        message_fronter << END
+        END
+
+    Remember that these variables are in banjo-digest.config, NOT banjo.config.
+
+    Also, do NOT touch the variables digest_archive, digest_rm_header, etc.
+
+    Both digest_issue and digest_number should start at 1 unless you have
+    some special reason to do otherwise.  The digest name should be an
+    obvious choice, but don't make it longer than 24 characters.
+
+    "maxlength" is the maximum size in characters (bytes) for a digest.
+    "digest_maxlines" is the maximum number of lines in a digest.
+    "digest_maxdays" is the maximum age in days of an article in a digest.
+
+    The last two parameters are optional, but maxlength must be defined.
+    A digest will automatically be created if any one of the three limits
+    is exceeded.
+
+    You can put this sort of material in the header or footer:
+
+message_fronter << END
+In this issue:
+-
+-    _SUBJECTS_
+-
+See the end of the digest for information about banjo-digest.
+END
+
+    Note that you need to indicate blank lines by placing a '-'
+    character at the beginning of the line.  You also indicate
+    whitespace at the beginning of a line by putting a '-' in
+    front of the whitespace.
+
+    The _SUBJECTS_ token will be expanded to all of the subject lines
+    of the messages in the digest, one subject per line.
+
+3.  Create some aliases.
+
+    You need to add to the banjo-outgoing alias:
+
+        banjo-outgoing: :include:/path/to/lists/banjo, banjo-digestify
+
+    and then you need the banjo-digest aliases:
+
+        banjo-digestify: "|/path/to/wrapper digest -r -C -l banjo-digest banjo-digest-outgoing"
+
+        banjo-digest: banjo
+        banjo-digest-outgoing: :include:/path/to/lists/banjo-digest
+        owner-banjo-digest-outgoing: harry
+        banjo-digest-approval: harry
+
+4.  Add a cron job.
+
+    If you want digests to be created at regular intervals, put this 
+    line in your cron table:
+
+        echo mkdigest banjo-digest pluck | mail majordomo@mj.server.com
+
+    ("pluck" is the digest's password).
+
+5.  Test it!
+
+

@@ -1,0 +1,45 @@
+#!/usr/local/bin/perl
+
+# Program name digest.num -- Digest numbering. 
+#
+# Lindsay Haisley, FMP Computer Serivces (fmouse@fmp.com)
+#
+# Usage: digest.num -l list_name [-i issue_num] [-v volume_num]
+#
+# Sets number for next digest issue and volume number in the config file
+# for list list_name.  If issue_num and volume_num are not supplied, they
+# are set to 0.
+
+$cf = $ENV{"MAJORDOMO_CF"} || "/etc/majordomo.cf";
+require "$cf";
+# chdir("$homedir");
+
+require "shlock.pl";
+require "config_parse.pl";
+require "getopt.pl";
+
+&Getopt('liv');
+die "No list config specified\n" if !defined($opt_l);
+die "List config file $opt_l.config does not exist\n" unless -e "$listdir/$opt_l.config";
+&get_config($listdir, $opt_l);
+
+if (defined($opt_v)) {
+	$volume = $opt_v;
+} else {
+	$volume = 0;
+}
+
+if (defined($opt_i)) {
+	$issue = $opt_i;
+} else {
+	$issue = 0;
+}
+
+$config_opts{$opt_l, "digest_volume"} = $volume;
+$config_opts{$opt_l, "digest_issue"} = $issue;
+
+&set_lock("$listdir/$opt_l.config.LOCK");
+&config'writeconfig($listdir, $opt_l);
+&free_lock("$listdir/$opt_l.config.LOCK");
+print STDERR "Config for list $opt_l set to volume $volume, issue $issue\n";
+

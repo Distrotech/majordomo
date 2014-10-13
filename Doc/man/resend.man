@@ -1,0 +1,264 @@
+
+
+
+     rrrreeeesssseeeennnndddd((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 rrrreeeesssseeeennnndddd((((1111))))
+
+
+
+     NNNNAAAAMMMMEEEE
+          resend - resend messages after evaluation
+
+     SSSSYYYYNNNNOOOOPPPPSSSSIIIISSSS
+          rrrreeeesssseeeennnndddd [[[[----AAAA]]]] [[[[----CCCC ccccoooonnnnffffiiiigggg----ffffiiiilllleeee]]]] [[[[----IIII ffffiiiilllleeee----lllliiiisssstttt]]]] [[[[----MMMM mmmmaaaaxxxx----mmmmssssgggg----
+          lllleeeennnnggggtttthhhh]]]] [[[[----RRRR]]]] [[[[----aaaa ppppaaaasssssssswwwwdddd]]]] [[[[----dddd]]]] [[[[----ffff ffffrrrroooommmm----aaaaddddddddrrrr]]]] [[[[----hhhh hhhhoooosssstttt----nnnnaaaammmmeeee]]]]
+          ----llll lllliiiisssstttt----nnnnaaaammmmeeee [[[[----nnnn]]]] [[[[----pppp pppprrrreeeecccceeeeddddeeeennnncccceeee]]]] [[[[----rrrr rrrreeeeppppllllyyyy----ttttoooo]]]] [[[[----ssss]]]]
+          ddddeeeessssttttiiiinnnnaaaattttiiiioooonnnn
+
+     AAAAVVVVAAAAIIIILLLLAAAABBBBIIIILLLLIIIITTTTYYYY
+          Provided with distributions of Majordomo.
+
+     DDDDEEEESSSSCCCCRRRRIIIIPPPPTTTTIIIIOOOONNNN
+          rrrreeeesssseeeennnndddd is a perl script that is usually used to redirect
+          mail messages to a mailing list after evaluating and parsing
+          the headers. Mail is "resent" by handing it off to the
+          mailer again with an alternate destination as specified by
+          the final operand.
+
+          Any message that rrrreeeesssseeeennnndddd doesn't like is sent to the list
+          owner (the "-f" address, or "<list-name>-owner" if -f isn't
+          used) along with a comment indicating what "resend" didn't
+          like about it.  To go ahead and send the message, just feed
+          it to resend without the flag that caused it to reject it
+          (in other words, if it rejected it because it was too long,
+          omit the "-M <>" flag; if it rejected it because it was
+          administrivia, omit the "-s" flag).
+
+          If you specify "-a <passwd>" flag, this "approval" password
+          can be used in an "Approved: <passwd>" line to override most
+          of the other checks (those enabled by "-s", "-M", and so
+          forth).  The "Approved:  <passwd>" line can either be one of
+          the mail headers, or the first line of the body of the
+          message.  If it is in the headers, the rest of the headers
+          are resent as part of the approved message.  If it is in the
+          body, the current headers are discarded in favor of the
+          headers from the original message which should follow the
+          "Approved:" line in the body.
+
+          The owner of a mailing list can thus post messages that were
+          initially bounced by adding an "Approved: <passwd>" line and
+          resubmitting the message.  Any "Approved: <passwd>" line is
+          stripped before the message is sent to the mailing list, so
+          that list members won't learn the password.  If the <passwd>
+          argument to the "-a" flag begins with a "/", it is assumed
+          to be a file name from which the actual password is read.
+
+          You can make a list "moderated" by specifying the "-A" flag.
+          If the "-A" flag is set, then any messages not containing a
+          valid "Approved:"  line are sent to the list owner, rather
+          than the whole list.; the list owner can then review the
+          message, add an appropriate "Approved:"  line, and resubmit
+
+
+
+     Page 1                                         (printed 12/10/96)
+
+
+
+
+
+
+     rrrreeeesssseeeennnndddd((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 rrrreeeesssseeeennnndddd((((1111))))
+
+
+
+          them (these last two steps can be done easily with the
+          "approve" command that comes with Majordomo).  If you
+          specify the "-A" flag, you must also specify the "-a
+          <passwd>" flag, so that resend knows what approval password
+          to use.
+
+          If you only want to accept messages from members of a list,
+          you can use the "-I <file-list>" flag to do this.  "<file-
+          list>" should be a colon-separated list of files in the
+          $listdir directory (specified in the config file) that
+          "resend" will check the address in "From:" line of a message
+          against.  If the address doesn't show up in one of those
+          files, and the message doesn't have a valid "approved"
+          header on it, it will be bounced to the list owner.
+
+     OOOOPPPPTTTTIIIIOOOONNNNSSSS
+          The following options can be used with resend:
+
+          ----AAAA        Approve; enable list moderation by requiring an
+                    Approved: header to be present in the message
+                    before resending. Messages without an Approved:
+                    header will be redirected to the list owner for
+                    approval.
+
+          ----CCCC ccccoooonnnnffffiiiigggg----ffffiiiilllleeee
+                    Alternate configuration file; tell resend to use
+                    the file
+
+          ccccoooonnnnffffiiiigggg----ffffiiiilllleeee
+                    instead of the default list-name.config.
+
+          ----IIII ffffiiiilllleeee----lllliiiisssstttt
+                    Include; ensure that the message sender (as
+                    represented in the From:  line of the incoming
+                    message) is in one of the file(s) specified in
+                    ffffiiiilllleeee----lllliiiisssstttt.  ffffiiiilllleeee----lllliiiisssstttt may contain multiple colon
+                    separated pathnames. Each pathname should point to
+                    a file that contains a sendmail-style mailing
+                    list.
+
+          [[[[----MMMM mmmmaaaaxxxx----mmmmssssgggg----lllleeeennnnggggtttthhhh]]]]
+                    Maximum; Specify the maximum length of the relayed
+                    message in octets.
+
+          [[[[----RRRR]]]]      Delete the "Received:" lines in the incoming
+                    message header. This can make the relayed messages
+                    considerably shorter at the expense of losing some
+                    potentially interesting debugging information.
+
+          [[[[----aaaa ppppaaaasssssssswwwwdddd____ffffiiiilllleeee]]]]
+                    Specify the pathname of the file containing the
+                    approval password for the list. This password is
+
+
+
+     Page 2                                         (printed 12/10/96)
+
+
+
+
+
+
+     rrrreeeesssseeeennnndddd((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 rrrreeeesssseeeennnndddd((((1111))))
+
+
+
+                    used to check Approved: headers when relaying
+                    messages to lists that are marked as moderated
+                    through the ----AAAA option above.
+
+          [[[[----dddd]]]]      Debug; print what would be done, but don't do it.
+
+          [[[[----ffff ffffrrrroooommmm----aaaaddddddddrrrr]]]]
+                    Set the From: address to ffffrrrroooommmm----aaaaddddddddrrrr
+
+          [[[[----hhhh hhhhoooosssstttt----nnnnaaaammmmeeee]]]]
+                    Set the name of the local host to hhhhoooosssstttt----nnnnaaaammmmeeee.  This
+                    name will be used in the From: and To: lines when
+                    updating the headers.
+
+          ----llll lllliiiisssstttt----nnnnaaaammmmeeee
+                    Specify the name of the mailing list as lllliiiisssstttt----nnnnaaaammmmeeee.
+                    This option is required, as rrrreeeesssseeeennnndddd uses this name
+                    to derive the names of many other files.
+
+          [[[[----nnnn]]]]      Assign a sequence number to each message as it
+                    comes through. The next sequence number is stored
+                    in the file lists/list-name.seq. If the string
+                    $SEQNUM is found in the $subject-prefix
+                    configuration variable, it is replaced with the
+                    current sequence number. Thus, a $subject_prefix
+                    of "($LIST $SEQNUM)" would render a Subject: line
+                    of (list-name sequence-number).
+
+          [[[[----pppp pppprrrreeeecccceeeeddddeeeennnncccceeee]]]]
+                    Set the Precedence: header to pppprrrreeeecccceeeeddddeeeennnncccceeee.
+
+          [[[[----rrrr rrrreeeeppppllllyyyy----ttttoooo]]]]
+                    Set the Reply-To: header to rrrreeeeppppllllyyyy----ttttoooo.
+
+          [[[[----ssss]]]]      Administrivia; Search the message for strings
+                    commonly found in administrative messages send to
+                    majordomo mailing lists (e.g.  subscribe,
+                    unsubscribe). If these are found in the first 10
+                    or so lines of the message, the message will be
+                    relayed to the list owner instead of being sent on
+                    to the mailing list.
+
+     OOOOPPPPEEEERRRRAAAANNNNDDDDSSSS
+          ddddeeeessssttttiiiinnnnaaaattttiiiioooonnnn
+                    The alias to which to redirect the message if it
+                    is a proper list submission.
+
+     CCCCOOOONNNNFFFFIIIIGGGGUUUURRRRAAAATTTTIIIIOOOONNNN
+     FFFFIIIILLLLEEEESSSS
+          ////eeeettttcccc////aaaalllliiiiaaaasssseeeessss
+          ////eeeettttcccc////mmmmaaaajjjjoooorrrrddddoooommmmoooo....ccccffff
+          lllliiiissssttttssss////lllliiiisssstttt----nnnnaaaammmmeeee....ccccoooonnnnffffiiiigggg
+
+
+
+     Page 3                                         (printed 12/10/96)
+
+
+
+
+
+
+     rrrreeeesssseeeennnndddd((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 rrrreeeesssseeeennnndddd((((1111))))
+
+
+
+     SSSSEEEEEEEE AAAALLLLSSSSOOOO
+          mmmmaaaajjjjoooorrrrddddoooommmmoooo((((8888)))),,,,aaaapppppppprrrroooovvvveeee((((1111))))
+
+     AAAAUUUUTTTTHHHHOOOORRRR
+          Majordomo and most of the ancillary perl code was written by
+          Brent Chapman <brent@GreatCircle.COM>.  Majordomo is
+          available via anonymous FTP from FTP.GreatCircle.COM, in the
+          directory pub/majordomo.  This man page was written by Shane
+          McCarron <ahby@themacs.com>.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+     Page 4                                         (printed 12/10/96)
+
+
+

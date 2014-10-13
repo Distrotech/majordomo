@@ -1,0 +1,503 @@
+#!/bin/perl
+
+# Original from J Greely <jgreely@cis.ohio-state.edu>, 9/30/92
+#
+# Heavily modified by Brent Chapman <Brent@GreatCircle.COM>
+
+# $Source: /sources/cvsrepos/majordomo/digest,v $
+# $Revision: 1.24 $
+# $Date: 2000/01/07 11:04:34 $
+# $Author: cwilson $
+# $State: Exp $
+# 
+# $Header: /sources/cvsrepos/majordomo/digest,v 1.24 2000/01/07 11:04:34 cwilson Exp $
+# 
+# 
+
+# Before doing anything else tell the world I am majordomo
+# The mj_ prefix is reserved for tools that are part of majordomo proper.
+$main'program_name = 'mj_digest'; # ';
+
+
+&init;
+&readconfig;
+$TEMP = (defined $TMPDIR && -d $TMPDIR) ?
+	"$TMPDIR/digest.$$" : "/usr/tmp/digest.$$";
+
+if (defined($opt_r)) {
+    &receive_message;
+    if (&should_be_sent(1)) {
+	&make_digest;
+    }
+} elsif (defined($opt_R)) {
+    &receive_message;
+} elsif (defined($opt_m)) {
+    &make_digest;
+} elsif (defined($opt_p)) {
+    if (&should_be_sent(1)) {
+	&make_digest;
+    }
+} else {
+    &abort("Usage: digest {-r|-R|-m|-p} [-c config|(-C -l list)]\nStopped");
+}
+
+&free_lock($lockfile);
+
+exit(0);
+
+sub receive_message {
+    $i = 0;
+    do {
+        $file = sprintf("%s/%03d", $V{'INCOMING'}, ++$i);
+    } until (! -e $file);
+
+    print STDERR "Receiving $i\n";
+    open(MSG, ">$file") || &abort("open(MSG, \">$file\"): $!");
+
+    # copy the message
+    while (<STDIN>) {
+	print MSG $_;
+    }
+
+    close(MSG);
+}
+
+#
+# Use config variables to determine if a digest should be contructed
+# and sent, or not.  Measures line count and byte count of messages
+# as they would appear in the digest, not as they exist in the spool
+# dir.  Side-effect: $file is the last file that should be included
+# in this digest, based on the config variables.
+#
+sub should_be_sent {
+    # fudge factors for headers and footers
+    $sum = 600 + length($HEADER) + length($HEADERS) + length($TRAILER);
+    $lines = 25 + ($HEADER =~ s/\n/\n/g) + ($HEADERS =~ s/\n/\n/g) +
+	($TRAILER =~ s/\n/\n/g);
+    ##print "start: lines = $lines\n";
+    $i = shift;
+    while (1) {
+	$nextfile = sprintf("%s/%03d", $V{'INCOMING'}, $i++);
+	last unless (-e $nextfile);
+	$file = $nextfile;
+	open(COUNT, "<$file") || &abort("open(COUNT, \"<$file\"): $!");
+
+	$/ = '';		# grab the header
+	$head = <COUNT>;
+
+	# only count From/Date/Subject header fields to get a
+	# more accurate size and line count.
+	$head =~ s/\n\s+/ /g;
+	$head =~ /^(From:\s+.*)/i    && ($sum += length($1)+1, $lines++);
+	$head =~ /^(Subject:\s+.*)/i && ($sum += length($1)+1, $lines++);
+	$head =~ /^(Date:\s+.*)/i    && ($sum += length($1)+1, $lines++);
+	$sum++, $lines++;
+
+	# count the body of the message
+	undef $/;
+	$body = <COUNT>;
+	$sum += length($body);
+	$lines += ($body =~ s/\n/\n/g);		# count newlines
+
+	$/ = "\n";
+	close(COUNT);
+	$sum += length($EB) + 3, $lines += 3;	# account for message delimiter
+
+	##printf "After message %03d, lines = $lines\n", $i-1;
+
+	if ($V{'DIGEST_SIZE'} && $sum > $V{'DIGEST_SIZE'}) {
+	    return(1);
+	}
+	if ($V{'DIGEST_LINES'} && $lines > $V{'DIGEST_LINES'}) {
+	    return(1);
+	}
+	if ($V{'MAX_AGE'} && (-M $file) > $V{'MAX_AGE'}) {
+	    return(1);
+	}
+    }
+
+    return(0);
+}
+
+#
+# Loop through calling 'should_be_sent' to find out how large each digest
+# should be and calling send_digest to construct and send each digest.
+# All the files in the spool directory are sent.  This could be modified
+# to only send "complete" digests.
+#
+# Note that this will quietly terminate if there are no messages in the
+# spool.  I find this preferable to an abort.
+#
+sub make_digest {
+    # disable age detection
+    $V{'MAX_AGE'} = 0;
+    # use 'should_be_sent' to find out how large each digest should be
+    # and loop through the spool dir until it's empty
+    $fnum = 0;
+    $nextfile = sprintf("%s/%03d", $V{'INCOMING'}, ++$fnum);
+    while (-e $nextfile) {
+	# starts at $fnum, sets '$file' to the last file to use
+	&should_be_sent($fnum);
+	&send_digest($file);
+	($fnum) = $file =~ m#/(\d+)$#;
+	$nextfile = sprintf("%s/%03d", $V{'INCOMING'}, ++$fnum);
+	$NUMBER++;
+    }
+
+    if (! $opt_d) {
+	if ( ! defined($opt_C) ) {
+	    open(NUM_FILE, ">$V{'NUM_FILE'}") ||
+		    &abort("open(NUM_FILE, \">$NUM_FILE\"): $!");
+	    printf NUM_FILE "%d\n", $NUMBER;
+	    close(NUM_FILE);
+	} else { # hurrah we are using the majordomo config file
+	    $config_opts{$opt_l,"digest_issue"} = $NUMBER;
+	    &config'writeconfig($listdir, $opt_l);
+	}
+    }
+}
+
+#
+# Contruct and send a digest using files in the spool directory up to and
+# including the "last file" specified as the first argument.
+#
+sub send_digest {
+    local($lastfile) = shift;
+    if (opendir(DIR, $V{'INCOMING'})) {
+	@files = grep(/^\d+$/, readdir(DIR));
+	closedir(DIR);
+    }
+    else {
+	&abort("Error opening $V{'INCOMING'}: $!\nStopped ");
+    }
+    &abort("No messages.\nStopped ") unless @files;
+    open(TEMP,">$TEMP") || &abort("$TEMP: $!\n");
+    print STDERR "producing $V{'NAME'} V$VOLUME #$NUMBER\n";
+    foreach (@files) {
+	    $message = "$V{'INCOMING'}/$_";
+	    open(message) || &abort("$message: $!\n");
+	    print STDERR "\tprocessing $message\n";
+	    push(@processed,$message);
+
+	    $/ = '';
+	    $head = <message>;
+	    $head =~ s/\n\s+/ /g;
+	    $body = "";
+	    $subj = ($head =~ /^Subject:\s+(.*)/i)? $1: "[none]";
+	    ($from) = $head =~ /^From:\s+(.*)/i;
+	    ($date) = $head =~ /^Date:\s+(.*)/i;
+
+	    undef $/;
+	    $body = <message>;
+	    close(message);
+
+	    # trim message fronter and footers inserted by resend in
+	    # non digest version of list
+	    if ($RMHEADER) {
+	      $body =~ s/$RMHEADER/\n/;
+	    }
+	    if ($RMTRAILER) {
+	      $body =~ s/$RMTRAILER/\n/;
+	    }
+
+	    # escape ^From <user> <weekday> <month> <day> <hr:min:sec> ...
+	    $body =~
+		s/^From (\S+\s+\w{3}\s+\w{3}\s+\d+\s+\d+:\d+:\d+)/>From $1/g;
+	    $body =~ s/^-/- -/g; # escape encapsulation boundaries in message
+	    # trim trailing \n's
+	    $len = length($body) - 1;
+	    $len-- while (substr($body,$len,1) eq "\n");
+	    substr($body,$len+1) = "";
+
+	    $/ = "\n";
+
+## note -- RFC 1153 claims the following headers should be retained, and
+## presented in the following order:
+##      Date:, From:, To:, Cc:, Subject:, Message-ID:, and Keywords:
+
+	    push(@subj,$subj);
+	    print TEMP <<EOF;
+Date: $date
+From: $from
+Subject: $subj
+
+$body
+
+$EB
+
+EOF
+	    last if ($message eq $lastfile);
+    }
+    close(TEMP);
+
+
+    if ($opt_d) {
+	$DIGEST = "$TMPDIR/testdigest.$NUMBER";
+    } else {
+	$DIGEST = sprintf("%s/v%02d.n%03d", $V{'ARCHIVE'}, $VOLUME, $NUMBER);
+    }
+    open(DIGEST, ">$DIGEST") || &abort("open(DIGEST, \">$DIGEST\"): $!");
+
+    print DIGEST <<EOF;
+From: $V{'FROM'} ($V{'NAME'})
+To: $V{'TO'}
+Subject: $V{'NAME'} V$VOLUME #$NUMBER
+Reply-To: $V{'REPLY-TO'}
+Sender: $V{'ERRORS-TO'}
+Errors-To: $V{'ERRORS-TO'}
+Precedence: $Precedence
+$HEADERS
+
+EOF
+
+    $PDATE = &getdate();
+    $volstr = sprintf("Volume %02d : Number %03d\n\n",$VOLUME,$NUMBER);
+    $width = length($V{'NAME'}) + length($PDATE) + length($volstr);
+    if ($width < 76) {
+	$center = " " x int((78 - $width) / 2);
+    } else {
+	$center = " ";
+    }
+    print DIGEST $V{'NAME'},$center,$PDATE,$center,$volstr,"\n\n";
+
+    foreach (split(/\n/,$HEADER)) {
+	    if (/_SUBJECTS_/) {
+		    $pre = $`;
+		    foreach $subj (@subj) {
+			    print DIGEST $pre,$subj,"\n";
+		    }
+	    }else{
+		    print DIGEST "$_\n";
+	    }
+    }
+    print DIGEST "\n";
+    print DIGEST "-" x 70,"\n\n";
+
+    open(TEMP);
+    print DIGEST <TEMP>;
+    close(TEMP);
+    unlink($TEMP);
+
+    $end = sprintf("End of %s V%d #%d", $V{'NAME'}, $VOLUME, $NUMBER);
+    print DIGEST $end, "\n";
+    print DIGEST "*" x length($end), "\n";
+    print DIGEST "\n";
+    print DIGEST $TRAILER;
+
+    close(DIGEST);
+
+    if ($opt_d) {
+	warn "digest output in $TMPDIR/testdigest.$NUMBER\n";
+    } else {
+	$sender = $V{'ERRORS-TO'};
+	$mailcmd = eval qq/"$mailer"/;
+	system("$mailcmd $V{'REALLY-TO'} < $DIGEST");
+	unlink(@processed);
+    }
+
+    undef @subj;
+    undef @processed;
+
+    return 0;
+}
+
+sub init {
+	$* = 1;
+	$HOME = $ENV{"HOME"} || (getpwuid($>))[7];
+	chdir($HOME);
+	&getopt("drRmpc:Cl:z") ||
+	    &abort("Usage: digest {-r|-R|-m|-p} [-c config|(-C -l list)]\nStopped");
+	$config = $opt_c || "$HOME/.digestrc";
+	$SIG{'INT'} = 'cleanup';
+	@MONTHS = ("January","February","March","April","May","June","July",
+	           "August","September","October","November","December");
+	@DAYS = ("Sunday","Monday","Tuesday","Wednesday","Thursday",
+	         "Friday","Saturday");
+	$EB = "-" x 30;
+}
+
+sub readconfig {
+	if (defined($opt_C)) {
+	   if (!defined($opt_l)) {
+		&abort("-C used without -l");
+	    } else {
+		# Read and execute the .cf file
+		$cf = $opt_c || $ENV{"MAJORDOMO_CF"} || 
+		    "/etc/majordomo.cf";
+		require "$cf";
+
+		chdir($homedir);
+
+		$opt_l =~ tr/A-Z/a-z/;
+
+	   	require "config_parse.pl";
+
+# Define all of the mailer properties:
+# It is possible that one or both of $sendmail_command and $bounce_mailer
+# are not defined, so we provide reasonable defaults.
+$sendmail_command = "/usr/lib/sendmail"
+  unless defined $sendmail_command;
+$mailer = "$sendmail_command -oi -oee -f\$sender"
+  unless defined $mailer;
+$bounce_mailer = "$sendmail_command -f\$sender -t"
+  unless defined $bounce_mailer;
+&set_abort_addr($whoami_owner);
+&set_mail_from($whoami);
+&set_mail_sender($whoami_owner);
+&set_mailer($bounce_mailer);
+
+		# get the digest config file
+		# Let's hope that nobody ever invokes us both with and
+		# without -C, since these locks don't interact
+		$lockfile = "$listdir/$opt_l.config.LOCK";
+		&set_lock($lockfile) ||
+		    &abort("$program_name: can't get lock '$lockfile'\n");
+		$lock_set = 1;
+		&get_config($listdir, $opt_l, "locked");
+
+		# get details of parent list footers and headers
+		if ($config_opts{$opt_l,"digest_rm_fronter"}) {
+		    &get_config($listdir, $config_opts{$opt_l,"digest_rm_fronter"});
+		    $RMHEADER = $config_opts{$config_opts{$opt_l,"digest_rm_fronter"},
+		                           "message_fronter"};
+		    $RMHEADER =~ s/([^A-Za-z0-9 \001])/\\\1/g;
+		    $RMHEADER =~ s/\\\$(SENDER|VERSION|LIST)/\[\^\\n\]\*/g;
+		    $RMHEADER =~ s/\001/\\n/g;
+		}
+		if ($config_opts{$opt_l,"digest_rm_footer"}) {
+		    if ($config_opts{$opt_l,"digest_rm_footer"} ne 
+		        $config_opts{$opt_l,"digest_rm_fronter"}) {
+			&get_config($listdir, $config_opts{$opt_l,"digest_rm_footer"});
+		    }
+		    $RMTRAILER = $config_opts{$config_opts{$opt_l,"digest_rm_footer"},
+		                           "message_footer"};
+		    $RMTRAILER =~ s/([^A-Za-z0-9 \001])/\\\1/g;
+		    $RMTRAILER =~ s/\\\$(SENDER|VERSION|LIST)/\[\^\\n\]\*/g;
+		    $RMTRAILER =~ s/\001/\\n/g;
+		}
+
+		# map config opts to internal variables and $V array
+		$HEADER = $config_opts{$opt_l,"message_fronter"};
+		$HEADER =~ s/\001/\n/g;
+		$TRAILER = $config_opts{$opt_l,"message_footer"};
+		$TRAILER =~ s/\001/\n/g;
+		$VOLUME = $config_opts{$opt_l,"digest_volume"};
+		$NUMBER = $config_opts{$opt_l,"digest_issue"};
+		$Precedence = $config_opts{$opt_l,"precedence"};
+		$Precedence = "bulk" if ($Precedence eq "");
+		$V{'ARCHIVE'} = "$filedir/$opt_l$filedir_suffix";
+		$V{'DIGEST_SIZE'} = $config_opts{$opt_l, "maxlength"};
+		$V{'DIGEST_LINES'} = $config_opts{$opt_l, "digest_maxlines"};
+		$V{'MAX_AGE'} = $config_opts{$opt_l, "digest_maxdays"};
+		$V{'ERRORS-TO'} = $config_opts{$opt_l,"sender"} . "@" .
+					($config_opts{$opt_l,"resend_host"}
+					 ||$whereami);
+		$V{'FROM'} = $config_opts{$opt_l, "sender"}. "@" .
+					($config_opts{$opt_l,"resend_host"}
+					 ||$whereami);
+		$V{'INCOMING'} = "$digest_work_dir/$opt_l";
+		$V{'NAME'} = $config_opts{$opt_l,"digest_name"};
+		$V{'REALLY-TO'} = $ARGV[0];
+		$V{'REPLY-TO'} = $config_opts{$opt_l,"reply_to"};
+		$V{'TO'} = "$opt_l\@$whereami";
+
+		# make the headers keyword work
+		if ( $config_opts{$opt_l,"message_headers"} ne '' ) {
+			$from = $V{'FROM'};
+			$HEADERS = &config'substitute_values (
+			$config_opts{$opt_l,"message_headers"}, $opt_l);
+			$HEADERS =~ s/\001/\n/g;
+		}
+            } # list is defined
+	 } else { # not using -C 
+	   	require "config_parse.pl";
+
+# Define all of the mailer properties:
+# The majordomo.cf file isn't used in this option, so fake everything.
+$sendmail_command = "/usr/lib/sendmail"
+  unless defined $sendmail_command;
+$mailer = "$sendmail_command -oi -oee -f\$sender"
+  unless defined $mailer;
+$bounce_mailer = "$sendmail_command -fmajordomo-owner -t"
+  unless defined $bounce_mailer;
+&set_abort_addr("majordomo-owner");
+&set_mail_from("majordomo-owner");
+&set_mail_sender("majordomo-owner");
+&set_mailer($bounce_mailer);
+
+	   open(config) || &abort("$config: $!\n");
+	   while (<config>) {
+		next if /^\s*$|^\s*#/;
+		chop;
+		($key,$value) = split(/\s*=\s*/,$_,2);
+		$V{$key} = $value;
+	   }
+	   close(config);
+
+	   # Let's hope that nobody ever invokes us both with and
+	   # without -C, since these locks don't interact
+	   $lockfile = "$V{'INCOMING'}/.LOCK";
+	   &set_lock($lockfile) ||
+		&abort("$program_name: can't get lock '$lockfile'\n");
+	   $lock_set = 1;
+
+	   open(header,$V{'HEADER'}) || &abort("$V{'HEADER'}: $!\n");
+	   $HEADER = join("",<header>);
+	   close(header);
+
+	   open(trailer,$V{'TRAILER'}) || &abort("$V{'TRAILER'}: $!\n");
+	   $TRAILER = join("",<trailer>);
+	   close(trailer);
+
+	   open(VOL_FILE,$V{'VOL_FILE'}) || &abort("$V{'VOL_FILE'}: $!\n");
+	   $VOLUME = join("",<VOL_FILE>);
+	   chop($VOLUME);
+	   close(VOL_FILE);
+
+	   open(NUM_FILE,$V{'NUM_FILE'}) || &abort("$V{'NUM_FILE'}: $!\n");
+	   $NUMBER = join("",<NUM_FILE>);
+	   chop($NUMBER);
+	   close(NUM_FILE);
+
+	} # end not using -C
+}
+
+#my favorite of the existing getopt routines; twisted
+#
+sub getopt {
+	local($_,%opt,$rest) = (split(/([^:])/,$_[0]),'');
+	while ($_ = $ARGV[0], /^-(.)/ && shift(@ARGV)) {
+		$rest = $';
+		last if $1 eq '-';
+		if (!defined $opt{$1}) {
+			warn "Unrecognized switch \"-$1\".\n";
+			return 0;
+		}elsif ($opt{$1}) {
+			$rest = shift(@ARGV) if $rest eq '';
+			eval "\$opt_$1 = \$rest";
+		}else{
+			eval "\$opt_$1 = 1";
+			$rest =~ /^(.)/;
+			redo if $rest ne '';
+		}
+	}
+	return 1;
+}
+
+sub cleanup {
+	unlink($TEMP);
+	exit(1);
+}
+
+sub getdate {
+  local($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+  $year += 1900;
+  return("$DAYS[$wday], $MONTHS[$mon] $mday $year");
+}
+
+sub abort {
+    local($msg) = shift;
+
+    &free_lock($lockfile) if $lock_set;
+    die($msg);
+}

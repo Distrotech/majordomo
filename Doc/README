@@ -1,0 +1,40 @@
+FAQ
+	The Majordomo FAQ, originally written by Vincent
+	D. Skahan, now maintained by barr@math.psu.edu (David Barr).
+
+majordomo-faq.html
+	An html version of the FAQ.
+
+majordomo.lisa6.ps
+	The original Majordomo paper from the USENIX LISA VI conference
+	in October, 1992.  While this paper is somewhat out of date
+	(some of the details about how Majordomo works have changed,
+	and many of the items mentioned as "to be implemented later"
+	have since been implemented), it remains a valuable
+	introduction to Majordomo's basic form and structure.
+
+list-owner-info
+	has information for list owner to get them started using
+	majordomo and the config files.
+
+
+majordomo.ora
+	This file is the chapter about Majordomo from the Nutshell Handbook
+	"Managing Internet Information Services," written by Jerry Peek.
+	The chapter is (c) Copyright 1994 by O'Reilly & Associates, Inc.,
+	and was included in the Majordomo distribution by permission of the
+	publisher.
+
+	This chapter is a good introduction to setting up the
+	majordomo software, be warned that it does not cover much of
+	the list operation details under 1.90 that deal with config
+	files. Then again the config files are supposed to be self
+	documenting. A newer version of this chapter that has been
+	updated for 1.90 is in the works, and should make it into the
+	"Managing Internet Information Services" book. This newer
+	chapter should be available via ftp in due time. Stay tuned to
+	the majordomo-announce or majordomo-users mailing list for
+	details.
+	
+man
+	Some man pages for majordomo and approve.

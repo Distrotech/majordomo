@@ -1,0 +1,69 @@
+sequencer - a majordomo module
+
+Shane P. McCarron
+MACS, Inc.
+
+Copyright MACS Inc, 1996
+
+All rights to this package are hereby contributed to the community,
+and in particular to the MajorDomo development group, to do with as
+they see fit.
+
+Introduction
+
+Sequencer is a perl script based upon the resend script in the
+majordomo release 1.9.3. The script has been modified to (optionally)
+provide for sequence numbering of messages in their subject lines.
+This modification takes advantage of the 'subject-prefix'
+configuration variable already supported by majordomo, expanding it by
+including an additiona '$SEQNUM' expandable variable. Expansion of
+this variable is handled in the sequencer script so that the majordomo
+and config-parse.pl scripts did not have to be modified. Processing of
+$SEQNUM could be moved back into the config-parse.pl library if the
+development team believes this is useful.
+
+
+Documentation
+
+Sequencing is invoked by calling the sequencer script
+with a '-n' (numbering) option. When this option is selected, the
+script uses a listname.seq file in the $filedir directory to determine
+the next message number. It uses the shlock.pl library to keep this file
+locked while the message is being processed (to prevent multiple use
+of the same sequence number, and skipping of sequence numbers when a
+message is bounced late in the script). 
+
+If there is a subject-prefix defined for the mailing list, and if
+there is a $SEQNUM in the defined subject-prefix, then the message's
+sequence number is placed in the subject line.
+
+This script also provides for archiving the messages by sequence
+number. If the -N option is selected, then a copy of the message will
+be placed in the list's archive directory with the file name equal to
+the message's sequence number. In addition, if there is a file called
+INDEX in the archive directory, the message's date, time, author, and
+subject will be placed in that INDEX. Note that the -N option
+necessarily implies the -n option, since archiving without a valid
+sequnce number would be silly. Logically, -N is just a bigger
+version of -n.
+
+This script also handles the absence of a subject. If there is no 
+subject, the script creates a Subject: line with a subject of 
+"Message for listname". This subject will also get a sequence number 
+of the requirements specified above are satisfied.
+
+Finally, the script increments the sequence number and updates the
+number in the listname.seq file, releasing the lock.
+
+Conclusion
+
+These extensions are pretty straightforward. I would recommend rolling
+them into the resend script. I would further recommend adding the
+$SEQNUM processing to the subject-prefix handler and getting the
+special case code out of the script. However, this could continue to
+exist as a standalone script. That is how I have done my
+implementation. 
+
+Also, I think it would be useful to include a man page for resend. If
+you don't have the time, I would be happy to try and put one together.
+However, I haven't written using the man macros in quite a while :-)

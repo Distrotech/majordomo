@@ -1,0 +1,145 @@
+#!/bin/perl
+
+
+# $Source: /sources/cvsrepos/majordomo/request-answer,v $
+# $Revision: 1.15 $
+# $Date: 2000/01/07 11:10:18 $
+# $Author: cwilson $
+# $State: Exp $
+#
+# $Locker:  $
+
+# set our path explicitly
+# PATH it is set in the wrapper, so there is no need to set it here.
+#$ENV{'PATH'} = "/bin:/usr/bin:/usr/ucb";
+
+# Read and execute the .cf file
+$cf = $ENV{"MAJORDOMO_CF"} || "/etc/majordomo.cf";
+if ($ARGV[0] eq "-C") {
+    $cf = $ARGV[1];
+    shift(@ARGV); 
+    shift(@ARGV); 
+}
+if (! -r $cf) {
+    die("$cf not readable; stopped");
+}
+require "$cf";
+
+chdir($homedir) || die("Can't chdir(\"$homedir\"): $!");
+unshift(@INC, $homedir);
+require "shlock.pl";
+require "majordomo.pl";
+
+$majordomo_dont_reply = $majordomo_dont_reply
+    || '(mailer-daemon|uucp|listserv|majordomo)\@';
+
+&ParseMailHeader(STDIN, *hdrs);
+$reply_to = &RetMailAddr(*hdrs);
+$reply_to = join(", ", &ParseAddrs($reply_to));
+
+die("request-answer: $reply_to is not a valid return address.\n") 
+    if (! &valid_addr($reply_to));
+
+# robots should not reply to other robots...
+if ($reply_to =~ m/$majordomo_dont_reply/i) {
+    &abort( "$whoami: not replying to $1 to avoid mail loop.\n");
+}
+
+$in_reply_to = $hdrs{"message-id"} . ", from " . $hdrs{"from"};
+$list = $ARGV[0];
+
+# Define all of the mailer properties:
+# It is possible that one or both of $sendmail_command and $bounce_mailer
+# are not defined, so we provide reasonable defaults.
+$sendmail_command = "/usr/lib/sendmail"
+  unless defined $sendmail_command;
+$bounce_mailer = "$sendmail_command -f\$sender -t"
+  unless defined $bounce_mailer;
+
+$sender = "$list-approval\@$whereami";
+
+$mailcmd = eval qq/"$bounce_mailer"/;
+
+if (defined($isParent = open(MAIL, "|-"))) {
+    &do_exec_sendmail(split(' ',$mailcmd))
+ 	unless $isParent;
+} else {
+    &abort("Failed to fork prior to mailer exec");
+}
+
+
+print MAIL <<"EOM";
+To: $reply_to
+From: $list-request\@$whereami
+Subject: Your mail to $list-request\@$whereami
+In-Reply-To: $in_reply_to
+Reply-To: $list-approval\@$whereami
+
+This pre-recorded message is being sent in response to your recent
+email to $list-request\@$whereami.
+
+All routine administrative requests (including subscriptions and
+unsubscriptions) concerning this mailing list are handled by an
+automated server.  Please read this message carefully to find the
+information relevant to you.
+
+SUBSCRIBING
+===========
+
+To subscribe to $list, send the following in the body (not
+the subject line) of an email message to "$whoami":
+
+	subscribe $list
+
+This will subscribe the account from which you send the message to
+the $list list.
+
+If you wish to subscribe another address instead (such as a local
+redistribution list), you can use a command of the form:
+
+	subscribe $list other-address\@your_site.your_net
+
+UNSUBSCRIBING
+=============
+
+To unsubscribe from $list, send the following in the body (not
+the subject line) of an email message to "$whoami":
+
+	unsubscribe $list
+
+This will unsubscribe the account from which you send the message.
+If you are subscribed with some other address, you'll have to send
+a command of the following form instead:
+
+	unsubscribe $list other-address\@your_site.your_net
+
+If you don't know what address you are subscribed with, you can send
+the following command to see who else is on the list (assuming that
+information isn't designated "private" by the owner of the list):
+
+	who $list
+
+If you want to search non-private lists at this server, you can do that
+by sending a command like:
+
+	which string
+
+This will return a list of all entries on all lists that contain "string".
+
+HELP
+====
+
+To find out more about the automated server and the commands it
+understands, send the following command to "$whoami":
+
+	help
+
+If you feel you need to reach a human, send email to:
+
+	$list-approval\@$whereami
+
+EOM
+
+close(MAIL);
+
+exit 0;

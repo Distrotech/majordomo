@@ -1,0 +1,264 @@
+
+
+
+MAJORDOMO(8)          MAINTENANCE COMMANDS           MAJORDOMO(8)
+
+
+
+NAME
+     Majordomo - manage multiple mailing lists
+
+SYNOPSIS
+     Majordomo
+
+DESCRIPTION
+     Majordomo is a perl script which automates the management of
+     Internet mailing lists.  It is executed via electronic mail;
+     users send e-mail to Majordomo with instructions in the body
+     of  the  message, and the perl script performs the requested
+     actions and responds with the  results.   Any  text  in  the
+     "Subject:" line is ignored.
+
+COMMANDS
+     Majordomo understands the following commands  (arguments  in
+     "[]" are optional):
+
+     subscribe _l_i_s_t [_a_d_d_r_e_s_s]
+          Subscribe yourself (or _a_d_d_r_e_s_s  if  specified)  to  the
+          named _l_i_s_t.
+
+     unsubscribe _l_i_s_t [_a_d_d_r_e_s_s]
+          Unsubscribe yourself (or _a_d_d_r_e_s_s if specified) from the
+          named _l_i_s_t.
+
+     get _l_i_s_t _f_i_l_e
+          Get the _f_i_l_e related to _l_i_s_t.
+
+     index _l_i_s_t
+          Return an index of the files  you  can  _g_e_t  associated
+          with _l_i_s_t.
+
+     which [_a_d_d_r_e_s_s]
+          Find out to which lists you (or _a_d_d_r_e_s_s  if  specified)
+          are subscribed.
+
+     who _l_i_s_t
+          Find out who is on the named _l_i_s_t.
+
+     info _l_i_s_t
+          Retrieve the general introductory information  for  the
+          named _l_i_s_t.
+
+     lists
+          Show the lists served by this Majordomo server. It will
+          also  show  a  50 character list description if one has
+          been provided.
+
+     help Retrieve an informational message, a brief synopsis  of
+          the user portion of this manual page.
+
+
+
+
+Sun Release 4.1           Last change:                          1
+
+
+
+
+
+
+MAJORDOMO(8)          MAINTENANCE COMMANDS           MAJORDOMO(8)
+
+
+
+     end  Stop processing commands (useful if your mailer adds  a
+          signature).
+
+     A command may be split across multiple lines if all  of  the
+     lines  in  the  command except the last end with a backslash
+     "\".
+
+     In addition, the owner of the list can issue  the  following
+     commands:
+
+     approve _p_a_s_s_w_o_r_d subscribe _l_i_s_t _a_d_d_r_e_s_s
+          Instruct Majordomo to add _a_d_d_r_e_s_s to _l_i_s_t.   The  pass-
+          word  is required to authenticate the list owner.  This
+          is  very  weak  authentication  as  the   password   is
+          transmitted  in  the  clear  in  an  e-mail message. No
+          claims are made that it  will  provide  anything  other
+          than rudimentary protection against abuse of the Major-
+          domo server.
+
+     approve _p_a_s_s_w_o_r_d unsubscribe _l_i_s_t _a_d_d_r_e_s_s
+          Instruct Majordomo to delete _a_d_d_r_e_s_s  from  _l_i_s_t.   The
+          password  is  required  to authenticate the list owner.
+          See the comments above regarding the password.
+
+     newinfo _l_i_s_t _p_a_s_s_w_o_r_d
+          Update the informational message for _l_i_s_t with the text
+          which  follows  on  subsequent lines.  No formatting of
+          the message occurs, so the list owner should be careful
+          to  constrain the message to eighty columns.  Majordomo
+          will include everything up to the string EOF or to  the
+          end  of  the mail message, whichever comes first.  This
+          is useful in case the owner wants  to  verify  the  new
+          message immediately, e.g.,
+
+               To: majordomo
+               newinfo list password
+
+               This is new information for the "list" list.
+
+               EOF
+               info list
+
+          This will simultaneously update the information for the
+          list, and then retrieve it for verification.  Note that
+          blank lines are preserved in the message.
+
+     passwd _l_i_s_t _o_l_d-_p_a_s_s_w_o_r_d _n_e_w-_p_a_s_s_w_o_r_d
+          Replace the password for _l_i_s_t with _n_e_w-_p_a_s_s_w_o_r_d.
+
+     config _l_i_s_t _p_a_s_s_w_o_r_d
+          retrieve a self-documenting configuration file for  the
+          list   <list>.    The  _p_a_s_s_w_o_r_d  can  be  the  password
+
+
+
+Sun Release 4.1           Last change:                          2
+
+
+
+
+
+
+MAJORDOMO(8)          MAINTENANCE COMMANDS           MAJORDOMO(8)
+
+
+
+          contained  in  the  file   <listname>.passwd   or   the
+          admin_password in the configuration file.
+
+     newconfig _l_i_s_t _p_a_s_s_w_o_r_d
+          Validates and installs a new  configuration  file.  The
+          config file includes everything up to the string EOF or
+          to the end of the mail message, whichever comes  first.
+          The  config  file  is  expected to be a complete config
+          file as returned by the "config" command.   Incremental
+          changing  of  the config file is not yet supported.  As
+          soon as the config file is validated and installed  its
+          settings  are  available  for  use.  This  is useful to
+          remember if you have multiple  commands  in  your  mail
+          message  since  they will be subject to the settings of
+          the new config file.  If there is an error in the  con-
+          fig file (incorrect value...), the config file will not
+          be accepted and the error message identifying the prob-
+          lem  line(s)  will be returned to the sender. Note that
+          only the errors are returned  to  the  sender  not  the
+          entire config file.
+
+     writeconfig _l_i_s_t _p_a_s_s_w_o_r_d
+          Write a new config in standard form. All of the  config
+          file  documentation  is optional. Only the keywords and
+          values are necessary. If a config file, stripped of all
+          comments  is installed using newconfig, that is what is
+          returned by config.  Writeconfig forces  a  rewrite  of
+          the config file with all comments and default values in
+          place. It is useful to use after an upgrade  of  major-
+          domo  since  it will add the new keywords for people to
+          change. It also updates the documentation in  the  file
+          if that has changed.
+
+     mkdigest _d_i_g_e_s_t-_l_i_s_t-_n_a_m_e _p_a_s_s_w_o_r_d
+          This will force a digest for the specified list  to  be
+          created. It is most useful if you don't have an account
+          on the machine that handles the digest for your list.
+
+
+CONFIGURATION
+     (Note that this section has not been  updated  to  majordomo
+     version  1.90).   Majordomo  supports _o_p_e_n and _c_l_o_s_e_d lists.
+     An _o_p_e_n list is one to  which  anyone  can  subscribe  them-
+     selves.   A  subscription  request  sent  to Majordomo for a
+     _c_l_o_s_e_d list is forwarded to the owner of the list for appro-
+     val.   If a user tries to subscribe an address which is dif-
+     ferent from their own (for example, a local list  exploder),
+     Majordomo  will  forward  the  request to the list owner for
+     approval, regardless of the open or  closed  status  of  the
+     list.
+
+
+
+
+
+Sun Release 4.1           Last change:                          3
+
+
+
+
+
+
+MAJORDOMO(8)          MAINTENANCE COMMANDS           MAJORDOMO(8)
+
+
+
+     Majordomo depends on the existence of  certain  system  mail
+     aliases.  The first three are for running the perl script on
+     incoming e-mail and specifying  the  responsible  person  in
+     charge of the server:
+
+     majordomo: "|/usr/local/mail/majordomo/wrapper majordomo"
+     majordomo-owner: brent
+     owner-majordomo: brent
+
+     These next few aliases are for a list called "sample":
+
+     sample: :include:/usr/local/mail/lists/sample
+     owner-sample: sample-owner
+     sample-request:          "|/usr/local/mail/majordomo/wrapper
+     request-answer sample"
+     owner-sample-request: sample-owner
+     sample-owner: brent
+     sample-approval: brent
+
+
+
+FILES
+     /etc/majordomo.cf
+     /usr/local/lib/mail/majordomo/
+
+
+BUGS
+     This man page has not  been  fully  updated  to  conform  to
+     majordomo 1.90.
+
+
+AUTHORS
+     Majordomo and most of the ancillary perl code was written by
+     Brent  Chapman, <brent@GreatCircle.COM>.  The latest version
+     of  the  code   is   available   by   anonymous   FTP   from
+     FTP.GreatCircle.COM,  in  directory pub/majordomo.  This man
+     page was written by Jim Duncan, <jim@math.psu.edu>.  Minimal
+     update    of    the    man    page    by    John   Rouillard
+     <rouilj@cs.umb.edu>.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Sun Release 4.1           Last change:                          4
+
+
+

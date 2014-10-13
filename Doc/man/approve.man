@@ -1,0 +1,132 @@
+
+
+
+APPROVE(1)               USER COMMANDS                 APPROVE(1)
+
+
+
+NAME
+     approve - approve a Majordomo request
+
+SYNOPSIS
+     approve [filename]
+
+DESCRIPTION
+     approve automates  the  task  of  replying  to  an  approval
+     request  from  Majordomo.   Input is the e-mail message con-
+     taining Majordomo's request, read  from  _f_i_l_e_n_a_m_e,  or  read
+     from standard input if no filename is specified.
+
+     approve currently understands two types of  requests;  those
+     requesting  subscription  to  a _c_l_o_s_e_d list, and those which
+     bounced due to a lack of permission to post to a  moderated,
+     or  _p_r_i_v_a_t_e,  mailing  list.   approve reads the body of the
+     message from Majordomo to determine the appropriate  action.
+     Assuming  a  message  containing a subscription request like
+     the following:
+
+        From: Majordomo@This.COM
+        To: this-list-approval@This.COM
+
+        Joe User <User@Fubar.COM> requests you approve  the  fol-
+        lowing:
+
+           subscribe this-list Joe User <User@Fubar.COM>
+
+        If you approve, send a line  such  as  the  following  to
+        Majordomo@This.COM:
+
+           approve   PASSWD   subscribe   this-list   Joe    User
+           <User@Fubar.COM>
+
+     then running approve on the message by saving it in a  file,
+     e.g.,
+
+        approve /tmp/request
+
+     or
+
+        approve < /tmp/request
+
+     will result in the following reply to Majordomo:
+
+        To: Majordomo@This.COM
+
+        approve PASSWD subscribe  this-list  User@Fubar.COM  (Joe
+        User)
+
+     If approve is on the user's path, then it's possible to exe-
+     cute  it  via  a shell escape, piping the current message to
+
+
+
+Sun Release 4.1           Last change:                          1
+
+
+
+
+
+
+APPROVE(1)               USER COMMANDS                 APPROVE(1)
+
+
+
+     approve from a mail program, e.g.,
+
+        !approve
+
+     would _a_p_p_r_o_v_e the current message in /usr/ucb/Mail.
+
+     If, in the latter case, the "Subject:" line of  the  request
+     from  Majordomo is "BOUNCE <list>: <reason>", the message is
+     treated as a posting rejected by resend for some reason, and
+     is reformatted with appropriate "Approved:" headers to cause
+     it to succeed, and then it is resubmitted to  Majordomo  for
+     posting.   This provides an easy mechanism for the moderator
+     of a mailing list to approve postings to the list.
+
+CONFIGURATION
+     approve assumes that the _a_p_p_r_o_v_e password for each  list  is
+     the  same  as the _a_p_p_r_o_v_a_l password used by resend, and that
+     this password is stored in a file called ._m_a_j_o_r_d_o_m_o  in  the
+     user's home directory.  The file has the following format:
+
+          this-list    passwd1   Majordomo@This.COM
+          other-list   passwd2   Majordomo@Other.GOV
+
+     The first column specifies the name of the mailing list, the
+     second  column  specifies  the list-owner's password for the
+     given list,  and  the  third  column  specifies  the  e-mail
+     address  of  the associated Majordomo server.  It is assumed
+     that the value in the  third  column  is  an  Internet-style
+     "something@somewhere"  address, and that postings for "List"
+     should be sent to "List@somewhere".  Since  this  file  only
+     needs  to be read by the user, it should be mode 600 to pro-
+     tect the passwords.
+
+FILES
+     ~/.majordomo
+     /usr/local/lib/mail/majordomo/
+
+SEE ALSO
+     majordomo(8),perl(1),resend(1).
+
+BUGS
+     There is no direct support for MH(1), so MH users will  have
+     to run approve directly on the message file in their inbox.
+
+     The ._m_a_j_o_r_d_o_m_o file requires an at-sign, "@", in the address
+     of  the  Majordomo  server, even if it colocated on the same
+     system as the list-owner.
+
+AUTHORS
+     Majordomo and most of the ancillary perl code was written by
+     Brent  Chapman,  <brent@GreatCircle.COM>.  This man page was
+     written by Jim Duncan, <jim@math.psu.edu>.
+
+
+
+Sun Release 4.1           Last change:                          2
+
+
+

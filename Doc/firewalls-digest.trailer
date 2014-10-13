@@ -1,0 +1,18 @@
+To subscribe to Firewalls-Digest, send the command:
+
+    subscribe firewalls-digest
+
+in the body of a message to "Majordomo@GreatCircle.COM".  If you want
+to subscribe something other than the account the mail is coming from,
+such as a local redistribution list, then append that address to the
+"subscribe" command; for example, to subscribe "local-firewalls":
+
+    subscribe firewalls-digest local-firewalls@your.domain.net
+
+A non-digest (direct mail) version of this list is also available; to
+subscribe to that instead, replace all instances of "firewalls-digest"
+in the commands above with "firewalls".
+
+Back issues are available for anonymous FTP from FTP.GreatCircle.COM, in
+pub/firewalls/digest/vNN.nMMM (where "NN" is the volume number, and "MMM"
+is the issue number).

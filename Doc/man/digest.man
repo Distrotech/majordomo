@@ -1,0 +1,396 @@
+
+
+
+     ddddiiiiggggeeeesssstttt((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 ddddiiiiggggeeeesssstttt((((1111))))
+
+
+
+     NNNNAAAAMMMMEEEE
+          digest - receive a file for a digest, or create and mail a
+          digest
+
+     SSSSYYYYNNNNOOOOPPPPSSSSIIIISSSS
+          ddddiiiiggggeeeesssstttt ----rrrr||||RRRR||||mmmm||||pppp ----CCCC ----llll _m_a_j_o_r_d_o_m_o-_l_i_s_t_n_a_m_e _r_e_c_i_p_i_e_n_t
+
+          ddddiiiiggggeeeesssstttt ----rrrr||||RRRR||||mmmm||||pppp [ ----cccc _c_o_n_f_i_g_u_r_a_t_i_o_n-_f_i_l_e ]
+
+     AAAAVVVVAAAAIIIILLLLAAAABBBBIIIILLLLIIIITTTTYYYY
+          Provided with distributions of Majordomo.
+
+     DDDDEEEESSSSCCCCRRRRIIIIPPPPTTTTIIIIOOOONNNN
+          The digest script is a perl script which automates the
+          management of digests of electronic mail.  It can be run in
+          a standalone configuration or as part of Majordomo.
+
+          It requires two directories: a work directory and an archive
+          directory.  Incoming email messages are held in the work
+          directory until they are collected into a digest.  The
+          digests are created and stored in the archive directory.
+
+          Incoming email messages are given numerical names starting
+          with ``001'' and are numbered in order of arrival.  The
+          digests are named according to volume and number.  For
+          example, the filename ``v01.n028'' indicates volume 1,
+          number 28 of the digest.
+
+          It should be noted that digest needs a configuration file to
+          define all of its operating parameters.  If no such file is
+          specified, digest will use the file.
+
+          Several aspects of digest configuration determine how and
+          when a digest is created.  A digest can be created at
+          regular intervals (as long as there are incoming messages)
+          or whenever certain configurable conditions are met.  These
+          conditions are:  how large the digest can be (in
+          characters), how long the digest can be (in lines), and how
+          old the messages in the digest can be (in days).
+
+     OOOOPPPPTTTTIIIIOOOONNNNSSSS
+          ----rrrr        Receive an email message via standard input and
+                    place the file into the working directory.  If any
+                    one of the conditions for digest creation are met,
+                    create and mail a digest.  These conditions are
+                    the same as those described under option ----pppp....
+
+          ----RRRR        Similar to ----rrrr,,,, except that it will not create a
+                    digest.  It simply places the message in the work
+                    directory and stops.
+
+          ----mmmm        If there are any numbered files in the working
+
+
+
+     Page 1                                          (printed 9/23/96)
+
+
+
+
+
+
+     ddddiiiiggggeeeesssstttt((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 ddddiiiiggggeeeesssstttt((((1111))))
+
+
+
+                    directory, create and mail a digest.  Store the
+                    digest in the archive directory.  This is the
+                    option used by majordomo's mkdigest command.
+
+          ----pppp        Conditionally creates a digest.  If any one of the
+                    conditions for digest creation are met, the digest
+                    is created and sent.  There are three conditions,
+                    which are connected to three limits:  the digest
+                    size in characters, the digest length in lines,
+                    and the age of the oldest message in days.  If one
+                    of the files is older than the age limit, a digest
+                    is created.  If the sum of the messages exceeds
+                    either of the size limits, a digest is created.
+                    The size limit in characters must be configured;
+                    the other two limits are optional.
+
+          ----cccc ccccoooonnnnffffiiiigggguuuurrrraaaattttiiiioooonnnn----ffffiiiilllleeee
+                    Use the parameters defined in _c_o_n_f_i_g_u_r_a_t_i_o_n-_f_i_l_e.
+
+          ----CCCC        Read the majordomo configuration file (either
+                    /etc/majordomo.cf or ~majordomo/majordomo.cf) and
+                    the configuration file for the Majordomo list
+                    specified in the ----llll option to define operational
+                    parameters.  If both ----CCCC and ----cccc options are
+                    specified (not recommended) only the ----CCCC option
+                    will be used.
+
+          ----llll mmmmaaaajjjjoooorrrrddddoooommmmoooo----lllliiiissssttttnnnnaaaammmmeeee
+                    This option is ignored if used without the ----CCCC
+                    option. Specifies the Majordomo email list.
+
+     OOOOPPPPEEEERRRRAAAANNNNDDDDSSSS
+          rrrreeeecccciiiippppiiiieeeennnntttt Email recipient of the digest.  This operand is
+                    ignored if used without the ----CCCC option.  It
+                    specifies one of the system mail aliases created
+                    for the Majordomo list named in the ----llll option.
+
+     MMMMAAAAJJJJOOOORRRRDDDDOOOOMMMMOOOO DDDDIIIIGGGGEEEESSSSTTTT CCCCOOOONNNNFFFFIIIIGGGGUUUURRRRAAAATTTTIIIIOOOONNNN
+          When used as a part of Majordomo, digest takes these
+          parameters from mmmmaaaajjjjoooorrrrddddoooommmmoooo....ccccffff (either /etc/majordomo.cf or
+          ~majordomo/majordomo.cf):
+
+          $$$$lllliiiissssttttddddiiiirrrr - the location of the mailing lists
+          $$$$ddddiiiiggggeeeesssstttt____wwwwoooorrrrkkkk____ddddiiiirrrr - parent directory for the digests' work
+          directories
+          $$$$ffffiiiilllleeeeddddiiiirrrr - parent directory for archive directories
+          $$$$ffffiiiilllleeeeddddiiiirrrr____ssssuuuuffffffffiiiixxxx - an optional identifier (may be the null
+          string)
+
+          Incoming messages for $$$$lllliiiissssttttnnnnaaaammmmeeee----ddddiiiiggggeeeesssstttt will be held in
+          $$$$ddddiiiiggggeeeesssstttt____wwwwoooorrrrkkkk____ddddiiiirrrr////$$$$lllliiiissssttttnnnnaaaammmmeeee----ddddiiiiggggeeeesssstttt....
+
+
+
+
+     Page 2                                          (printed 9/23/96)
+
+
+
+
+
+
+     ddddiiiiggggeeeesssstttt((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 ddddiiiiggggeeeesssstttt((((1111))))
+
+
+
+          Digests will be stored in $$$$ffffiiiilllleeeeddddiiiirrrr////$$$$lllliiiissssttttnnnnaaaammmmeeee----
+          ddddiiiiggggeeeesssstttt$$$$ffffiiiilllleeeeddddiiiirrrr____ssssuuuuffffffffiiiixxxx....
+
+          The list's configuration file will be $$$$lllliiiissssttttddddiiiirrrr////$$$$lllliiiissssttttnnnnaaaammmmeeee----
+          ddddiiiiggggeeeesssstttt....ccccoooonnnnffffiiiigggg....
+
+          Examples of these values are given in below.
+
+          The list's configuration file contains several digest
+          parameters that are not yet implemented and/or should NOT be
+          changed from their defaults (blank): ddddiiiiggggeeeesssstttt____aaaarrrrcccchhhhiiiivvvveeee,,,,
+          ddddiiiiggggeeeesssstttt____rrrrmmmm____ffffooooooootttteeeerrrr,,,, ddddiiiiggggeeeesssstttt____rrrrmmmm____ffffrrrroooonnnntttteeeerrrr,,,, ddddiiiiggggeeeesssstttt____wwwwoooorrrrkkkk____ddddiiiirrrr....
+
+          The parameters which specifically deal with digest creation
+          and maintenance are:
+
+          ddddiiiiggggeeeesssstttt____nnnnaaaammmmeeee - the title of the digest
+          ddddiiiiggggeeeesssstttt____vvvvoooolllluuuummmmeeee - volume number
+          ddddiiiiggggeeeesssstttt____iiiissssssssuuuueeee - issue number
+          ddddiiiiggggeeeesssstttt____mmmmaaaaxxxxddddaaaayyyyssss - age limit in days for oldest message in the
+          digest
+          ddddiiiiggggeeeesssstttt____mmmmaaaaxxxxlllliiiinnnneeeessss - maximum number of lines in a digest
+          mmmmaaaaxxxxlllleeeennnnggggtttthhhh - maximum number of characters in a digest
+          mmmmeeeessssssssaaaaggggeeee____ffffrrrroooonnnntttteeeerrrr - text prepended to the digest
+          mmmmeeeessssssssaaaaggggeeee____ffffooooooootttteeeerrrr - text appended to the digest
+
+          The last three parameters are also used in the configuration
+          of an ordinary (non-digest) Majordomo list.
+
+          Each digest begins with the a line containing the
+          ddddiiiiggggeeeesssstttt____nnnnaaaammmmeeee,,,, ccccuuuurrrrrrrreeeennnntttt ddddaaaatttteeee,,,, ddddiiiiggggeeeesssstttt____vvvvoooolllluuuummmmeeee aaaannnndddd ddddiiiiggggeeeesssstttt____iiiissssssssuuuueeee....
+
+          A blank line follows, and then the text from the
+          mmmmeeeessssssssaaaaggggeeee____ffffrrrroooonnnntttteeeerrrr,,,, if any.  The message fronter may contain
+          the token, which will be replaced by the subject lines from
+          the messages in the digest.
+
+          The text in the mmmmeeeessssssssaaaaggggeeee____ffffooooooootttteeeerrrr,,,, if any, will be appended to
+          the digest.
+
+          To embed a blank line in the mmmmeeeessssssssaaaaggggeeee____ffffooooooootttteeeerrrr or
+          mmmmeeeessssssssaaaaggggeeee____ffffrrrroooonnnntttteeeerrrr,,,, put a `-' as the first and ONLY character
+          on the line.  To preserve whitespace at the beginning of a
+          line, put a `-' on the line before the whitespace to be
+          preserved.  To put a literal `-' at the beginning of a line,
+          double it.
+
+          Both message_footer and message_fronter may also use the
+          tokens and which will be expanded to, respectively: the name
+          of the current list, the sender as taken from the from line,
+          and the current version of Majordomo.
+
+
+
+
+     Page 3                                          (printed 9/23/96)
+
+
+
+
+
+
+     ddddiiiiggggeeeesssstttt((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 ddddiiiiggggeeeesssstttt((((1111))))
+
+
+
+          Examples of the aliases usually used with the digest are
+          given in below.
+
+          The list owner can prompt Majordomo to build a digest by
+          sending the command
+
+          mkdigest _d_i_g_e_s_t-_n_a_m_e [ _d_i_g_e_s_t-_p_a_s_s_w_o_r_d ]
+
+          to majordomo either via email or from cron.  The cron
+          command has the format:
+
+          echo mkdigest _d_i_g_e_s_t-_n_a_m_e [ _d_i_g_e_s_t-_p_a_s_s_w_o_r_d ] | mail
+          majordomo@domain.com
+
+     SSSSTTTTAAAANNNNDDDDAAAALLLLOOOONNNNEEEE DDDDIIIIGGGGEEEESSSSTTTT CCCCOOOONNNNFFFFIIIIGGGGUUUURRRRAAAATTTTIIIIOOOONNNN
+          The Majordomo distribution comes with a ``digest''
+          subdirectory.  The sample configuration file is called
+          firewalls-digest.cf.  A file in this format must be used if
+          digest is invoked in standalone configuration.
+
+          If no configuration file is specified when digest is
+          invoked, it looks for a file named that must be in the same
+          format as the example file.
+
+          The configuration file defines the email addresses of the
+          sender and recipient of the digest. It also locates the work
+          and archive directories, the digest's size limit, and the
+          names of the files that contain the digest's volume, number,
+          header and footer.
+
+          The easiest way to configure a standalone digest is to copy
+          the five files (firewalls-digest.*) and edit them to taste.
+
+          Incoming mail is piped to digest with the ----rrrr option. This
+          can be done from some mail-reading programs, through the
+          command line, or via mail aliases similar to those found in
+          below.
+
+     EEEEXXXXAAAAMMMMPPPPLLLLEEEESSSS
+          1. Example values from ////eeeettttcccc////mmmmaaaajjjjoooorrrrddddoooommmmoooo....ccccffff::::
+
+          $$$$lllliiiissssttttddddiiiirrrr ==== ````````uuuussssrrrr////llllooooccccaaaallll////mmmmaaaaiiiillll////lllliiiissssttttssss'''''''';;;;
+          $$$$ddddiiiiggggeeeesssstttt____wwwwoooorrrrkkkk____ddddiiiirrrr ==== ````````uuuussssrrrr////llllooooccccaaaallll////mmmmaaaaiiiillll////ddddiiiiggggeeeesssstttt'''''''';;;;
+          $$$$ffffiiiilllleeeeddddiiiirrrr ==== ````````lllliiiissssttttddddiiiirrrr'''''''';;;;
+          $$$$ffffiiiilllleeeeddddiiiirrrr____ssssuuuuffffffffiiiixxxx ````````aaaarrrrcccchhhhiiiivvvveeee'''''''';;;;
+
+          If our digest's name is banjo-digest, the work directory
+          will be /usr/local/mail/digest/banjo-digest; the archive
+          directory will be /usr/local/mail/lists/banjo-
+          digest.archive.  Note that these are names of directories,
+          not files.
+
+
+
+
+     Page 4                                          (printed 9/23/96)
+
+
+
+
+
+
+     ddddiiiiggggeeeesssstttt((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 ddddiiiiggggeeeesssstttt((((1111))))
+
+
+
+          2. Typical aliases for Majordomo digests:
+
+          Usually a Majordomo digest is associated to a regular (non-
+          digest) list.  The digest's name is the regular listname
+          plus ``-digest''.  The list ``banjo'' will have the digest
+          ``banjo-digest''.
+
+          bbbbaaaannnnjjjjoooo----ddddiiiiggggeeeesssstttt----aaaapppppppprrrroooovvvvaaaallll:::: kkkkeeeevvvviiiinnnnkkkk
+          bbbbaaaannnnjjjjoooo----ddddiiiiggggeeeesssstttt----oooouuuuttttggggooooiiiinnnngggg:::: ::::iiiinnnncccclllluuuuddddeeee::::////uuuussssrrrr////llllooooccccaaaallll////lllliiiissssttttssss////bbbbaaaannnnjjjjoooo----
+          ddddiiiiggggeeeesssstttt
+          oooowwwwnnnneeeerrrr----bbbbaaaannnnjjjjoooo----ddddiiiiggggeeeesssstttt----oooouuuuttttggggooooiiiinnnngggg:::: kkkkeeeevvvviiiinnnnkkkk
+          bbbbaaaannnnjjjjoooo----ddddiiiiggggeeeessssttttiiiiffffyyyy:::: ````````||||uuuussssrrrr////mmmmaaaajjjjoooorrrrddddoooommmmoooo////wwwwrrrraaaappppppppeeeerrrr ddddiiiiggggeeeesssstttt ----rrrr ----CCCC ----llll
+          bbbbaaaannnnjjjjoooo----ddddiiiiggggeeeesssstttt bbbbaaaannnnjjjjoooo----ddddiiiiggggeeeesssstttt----oooouuuuttttggggooooiiiinnnngggg''''''''
+          bbbbaaaannnnjjjjoooo----ddddiiiiggggeeeesssstttt:::: bbbbaaaannnnjjjjoooo
+
+          Note that mail to ``banjo-digest'' is routed to the regular
+          list.  The ``digestify'' alias must be added to the regular
+          list's outgoing alias:
+
+          bbbbaaaannnnjjjjoooo----oooouuuuttttggggooooiiiinnnngggg:::: ::::iiiinnnncccclllluuuuddddeeee::::////uuuussssrrrr////llllooooccccaaaallll////lllliiiissssttttssss////bbbbaaaannnnjjjjoooo,,,,bbbbaaaannnnjjjjoooo----
+          ddddiiiiggggeeeessssttttiiiiffffyyyy
+
+     NNNNOOOOTTTTEEEESSSS
+          The volume number does not change automatically; it must be
+          incremented manually.
+
+          For testing/debugging purposes there is a ``hidden'' option
+          ----dddd that creates the digest as /tmp/testdigest.nnn (where _n_n_n
+          is the current digest number).  Since it is for testing and
+          debugging purposes, it does not mail the digest, it does not
+          place the digest in the archive directory, and it does not
+          update the digest number.
+
+     EEEEXXXXIIIITTTT SSSSTTTTAAAATTTTUUUUSSSS
+          The following exit values are returned:
+
+          0000         Successful completion.
+
+          >>>>0000        An error occurred.
+
+     FFFFIIIILLLLEEEESSSS
+          ////eeeettttcccc////aaaalllliiiiaaaasssseeeessss
+          ////eeeettttcccc////mmmmaaaajjjjoooorrrrddddoooommmmoooo....ccccffff
+
+     SSSSEEEEEEEE AAAALLLLSSSSOOOO
+          mmmmaaaajjjjoooorrrrddddoooommmmoooo((((8888))))
+
+     AAAAUUUUTTTTHHHHOOOORRRR
+          The digest script was written by Brent Chapman
+          <brent@GreatCircle.COM>.  It is available with distributions
+          of Majordomo via anonymous FTP from FTP.GreatCircle.COM, in
+          the directory pub/majordomo.  This man page was written by
+
+
+
+     Page 5                                          (printed 9/23/96)
+
+
+
+
+
+
+     ddddiiiiggggeeeesssstttt((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 ddddiiiiggggeeeesssstttt((((1111))))
+
+
+
+          Kevin Kelleher <fury@world.std.com>.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+     Page 6                                          (printed 9/23/96)
+
+
+

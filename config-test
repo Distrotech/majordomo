@@ -1,0 +1,418 @@
+#!/bin/perl
+# $Id: config-test,v 1.18 1997/08/27 15:17:13 cwilson Exp $
+# configuration test for majordomo
+# provided with majordomo, modifications by darren stalder <torin@daft.com>
+# more mods by Vince Skahan <vince@atc.boeing.com>
+#
+# execute this by cd to your majordomo dir, then 'wrapper config-test'
+#
+
+@requires = ( "ctime.pl",
+	     "majordomo_version.pl",
+	     "majordomo.pl",
+	     "shlock.pl",
+	     "config_parse.pl",
+	      );
+
+$registration_file = ".majordomo_registration";
+
+$default_uid = 123;
+
+if (!$ENV{'MAJORDOMO_CF'}) {
+    print <<"STOP"
+
+\a\aYou're attempting to run $0 the wrong way!
+Let's try running it through ./wrapper instead, hmm?
+STOP
+    ;
+    sleep 2;
+    if (-x "./wrapper") {
+	exec("./wrapper config-test", @ARGV);
+    } else {
+	print <<"dummy"
+Well, shoot, you forget to run 
+
+    make install-wrapper
+
+as well!  Better go do that...
+dummy
+    ;
+	exit 1;
+    }
+}
+
+
+
+&header('');
+&header("Config-test for Majordomo");
+&header('');
+print "\n\n";
+
+
+
+&header("Obvious things:");
+
+&header("environment variables");
+foreach $e (sort keys %ENV) {
+        print "   $e=$ENV{$e}\n";
+}
+
+&header("euid/egid checks");
+
+$euid_name=getpwuid($>);
+push(@egid_group_numbers,(split(' ',$) )));   # it switches groups...
+foreach $groupnum (@egid_group_numbers) {
+	$name = getgrgid($groupnum);
+	push(@egid_names,$name);
+}
+print "   effective user  = $euid_name (uid $>)\n";
+print "   effective group = @egid_names (gid $) )\n";
+
+&header("uid/gid checks");
+
+$uid_name=getpwuid($<);
+push(@gid_group_numbers,(split(' ',$( )));   # it switches groups...
+foreach $groupnum (@gid_group_numbers) {
+	$name = getgrgid($groupnum);
+	push(@gid_names,$name);
+}
+print "   real      user  = $uid_name (uid $<)\n";
+print "   real      group = @gid_names (gid $( )\n";
+
+if ($< == $default_uid) { 		# the default uid
+    print <<"idontthinkso"
+I think it's highly unlikely that you're using the default
+user id of $default_uid for majordomo.  Lemme check...
+
+idontthinkso
+    ;
+    $name = (getpwuid($default_uid))[0];
+    if (! $name ) {
+	print <<"ithoughtso"
+
+Hah!  I thought so!  You've forgotten to use the right user id 
+in the Makefile.  Make sure that W_USER and W_GROUP are set to 
+the correct values in the Makefile, and run 
+	make install-wrapper 
+again.
+
+ithoughtso
+;#'
+	exit 1;
+    } else {
+	print <<"wellokay"
+Hmm!  The user with the uid of $default_uid is $name, so
+at least the user exists.  If this isn't the majordomo user,
+make sure that W_USER and W_GROUP are set to the correct values
+in the Makefile, and run 
+	make install-wrapper 
+again.
+
+wellokay
+;#'
+    }    
+}
+
+&header('');
+print "\n\tNon obvious things that cause headaches:\n\n";
+&header('');
+
+$cf = $ARGV[0] || $ENV{'MAJORDOMO_CF'};
+
+if (eval "require '$cf'") { 
+    &good("'require'd $cf okay.");    
+} else {
+    &bad("something's wrong with $cf: $@");
+}
+
+foreach (@requires) {
+    if (require $_) {
+	&good("found $_ okay.");
+    } else {
+	&bad("failed to find $_ in \@INC");
+    }
+}
+
+print "\n";
+
+print "You're running Majordomo Version $majordomo_version.\n";
+
+print "\n--==> Majordomo home directory is $homedir.\n";
+
+unshift(@INC, $homedir);
+
+&header("Include directories");
+foreach (@INC) {
+    print "\t$_\n";
+}
+
+&header("Home");
+
+if (chdir($homedir)) {
+    &good("changedir to $homedir succeeded.");
+} else {
+    &bad("changedir to $homedir failed, $!");
+}
+if (open(TEST, ">cftest.$$")) {
+    &good("Created a mock lock file.");
+    close(TEST);
+    unlink("cftest.$$");
+}
+else {
+    &bad("Couldn't create a mock lock file.\n      \$homedir ($homedir) needs to be writable.");
+}
+
+&header("temp directory");
+if (! defined $TMPDIR) {
+    &bad("\$TMPDIR not defined by majordomo.cf");
+}
+elsif (-d $TMPDIR) {
+    if (open(TEST, ">$TMPDIR/cftest.$$")) {
+	&good("Created a temp file in \$TMPDIR ($TMPDIR).");
+	close(TEST);
+	unlink("$TMPDIR/cftest.$$");
+    }
+    else {
+	&bad("Couldn't create a file in $TMPDIR.");
+    }
+}
+else {
+    &bad("\$TMPDIR ($TMPDIR) does not exist.");
+}
+
+&header("list directory");
+
+if (-d $listdir) {
+    if (-r $listdir && -w $listdir && -x $listdir) {
+	&good("list directory $listdir has good permissions.");
+    } else {
+	&bad("list directory $listdir has bad permissions");
+    }
+} else {
+    print "Hmmm, list directory $listdir doesn't exist\n or isn't a directory.\n";
+    print "Let me try to make it for you...\n";
+    if ( mkdir( $listdir, 0777) ) {
+	&good("list directory $listdir created.\n");
+    } else {
+	&bad("Couldn't create $listdir, $!");
+    }
+}
+
+&header("log");
+
+if ( ! -e $log ) {
+    print "Logfile $log didn't exist, trying to create...\n ";
+    if (open(A, ">$log") && close(A) ) { # sesame
+	print "okay, now chmod'ing..\n";
+	chmod (0664, $log) || &bad( "chmod on $log failed, $!");
+    } else {
+	&bad("Couldn't create logfile $log, $!\n");
+    }
+}
+
+if ( -f $log && -r $log && -w $log) {
+    &good("logfile $log exists and is writeable.");
+} else {
+    &bad("logfile $log exists, but is not writeable or isn't a file.");
+}
+
+&header ("Mailers");
+if ($mailer) {
+    print "You have defined a mailer for delivery.\n";
+    if ($mailer =~ /sendmail.*\s-t/i) {
+	print "Whoa!  You have given the \"-t\" option to sendmail.  This can cause mail\n";
+	print "loops when used for outbound delivery.\n";
+	$BAD++;
+    }
+    ($x = $mailer) =~ s/\s.*$//;  # Remove everything after and including
+                                  # the first space
+}
+elsif ($sendmail_command) {
+    print "You haven't defined a \$mailer to be used for delivery, but you have\n";
+    print "defined \$sendmail_command.  Majordomo will use\n";
+    print "$sendmail_command -f\\\$sender\n";
+    print "to deliver mail to the list unless you define list-specific cases.\n";
+    $x = $sendmail_command;
+}
+else {
+    print "You have defined neither \$mailer, nor \$sendmail_command.\n";
+    print "Majordomo will use\n";
+    print "/usr/lib/sendmail -f\\\$sender\n";
+    print "to deliver mail to the list.\n";
+    $x = "/usr/lib/sendmail";
+}
+    
+print "Attempting to verify that this is a valid mailer...";
+if ( -x $x ) {
+    print "looks okay.\n";
+} else {
+    print "nope, $x is not executable\n";
+    $BAD++;
+}
+
+if ($bounce_mailer) {
+    print "You have defined a mailer for delivering administrative messages.\n";
+    ($x = $mailer) =~ s/\s.*$//;  # Remove everything after and including
+                                  # the first space
+}
+elsif ($sendmail_command) {
+    print "You haven't defined a \$bounce_mailer to be used for delivering\n";
+    print "administrative messages, but you have defined \$sendmail_command.\n";
+    print "Majordomo will use\n";
+    print "$sendmail_command -f\\\$sender -t\n";
+    print "to deliver administrative mail.\n";
+    $x = $sendmail_command;
+}
+else {
+    print "You have defined neither \$mailer, nor \$sendmail_command.\n";
+    print "Majordomo will use\n";
+    print "/usr/lib/sendmail -f\\\$sender -t\n";
+    print "to deliver administrative mail.\n";
+    $x = "/usr/lib/sendmail";
+}
+    
+print "Attempting to verify that this is a valid mailer...";
+if ( -x $x ) {
+    print "looks okay.\n";
+} else {
+    print "nope, $x is not executable\n";
+    $BAD++;
+}
+
+
+&header("Checking majordomo.cf");
+
+print "Checking to see if there are new variables that should be in\n";
+print "your majordomo.cf file...";
+
+open($cf, $cf) || &bad("Couldn't open $cf for reading, $!");
+open(S, 'sample.cf') || &bad("Couldn't open sample.cf for reading, $!");
+
+while (<S>) {
+    next unless /^\s*(\$\w+(('|::)\w+)*)/;
+    $config{$1} = 2;
+}
+
+while (<$cf>) {
+    next unless /^\s*(\$\w+(('|::)\w+)*)/;
+    $config{$1} = 1 unless defined $config{$1}; # Keeps -w happy
+    $config{$1} |= 1;
+}
+
+close (S);
+close $cf;
+
+# $config{whatever} == 1 if only in their majordomo.cf,
+#	== 2 if only in sample.cf, 
+#	== 3 if in both.
+#
+
+foreach (sort keys %config) {
+    push (@new, $_) if $config{$_} == 2;
+    push (@unknown, $_) if $config{$_} == 1;
+}
+
+if ($#new >= 0) {
+    print "\nNew configuration variables (see sample.cf):\n";
+    foreach (@new) { print "\t$_\n"; }
+}
+
+if ($#unknown >= 0) {
+    print "\nUnknown configuration variables in existing majordomo.cf:\n";
+    foreach (@unknown) { print "\t$_\n"; }
+}
+
+if ($#new == -1 && $#unknown == -1) {
+    print "Nope, none that I see.\n";
+}
+
+print "\nHave you configured where Majordomo is?\n";
+print "\t\$whereami is $whereami\n";
+if ($whereami eq "example.com") {
+    &bad("\$whereami hasn't been changed yet!");
+} else {
+    &good("yup!");
+}
+
+&header("end of tests");
+
+print "\n\n";
+
+if ($BAD) {
+    print "$BAD bad ", $BAD == 1 ? "thing was" : "things were", " found.\n";
+    print "Please fix before attempting to run Majordomo.\n";
+} else {
+    print <<"ZOT";
+Nothing bad found!  Majordomo _should_ work correctly.
+
+If it doesn't, check your configuration file 
+	($cf) 
+closely, and if it still looks okay, consider asking the majordomo-users
+mailing list at "majordomo-users\@greatcircle.com" for assistance.  Be sure
+and fully specify what your problems are, and what type of machine (and
+operating system) you are using.
+
+Enjoy!
+
+ZOT
+
+#'
+
+    if ( ! -e $registration_file ||
+	`cat $registration_file` ne $majordomo_version) {
+	print <<"ZOT";
+I see you haven't registered this version of Majordomo.
+By registering, you will be notified of patches and further releases
+of Majordomo.  Shall I send email to majordomo-registration\@greatcircle.com
+to register this version?  (I'll cc $whoami_owner)
+ZOT
+
+#'
+    print "[yes] ";
+	if ( <> !~ /n/i) {
+	    open(RF,">$registration_file") 
+		|| die "couldn't create $registration_file, $!";
+	    print RF $majordomo_version;
+	    close RF;
+
+	    $sendmail_command = "/usr/lib/sendmail"
+		unless defined $sendmail_command;
+	    $bounce_mailer = "$sendmail_command -f\$sender -t"
+		unless defined $bounce_mailer;
+	    &set_abort_addr($whoami_owner);
+	    &set_mail_from($whoami); $x = $whoami; # Keeps -w happy
+	    &set_mail_sender($whoami_owner);
+	    &set_mailer($bounce_mailer);
+
+	    &sendmail(REG, "majordomo-registration\@greatcircle.com,$whoami_owner", 
+		      "Majordomo Registration");
+	    print REG "Majordomo Version: $majordomo_version\n";
+	    print REG "Perl version $]\n";
+	    print REG "Majordomo Owner:  $whoami_owner\n";
+	    print REG "Uname: " . `uname -a`;
+	    close REG;
+	} else {
+	    print "Ooooh, like to live dangerously, eh?!\n\n";
+	}	
+    }	
+
+}    
+
+
+######################################################################
+sub good { print "Good: $_[0]\n"; }
+
+sub bad { print "BAD:  $_[0]\n"; $BAD++;}
+
+sub header {
+    if (length $_[0]) {
+	print '-' x ( ( 60 - (length($_[0]) + 2) ) / 2),
+	" $_[0] ", '-' x ( ( 60 - (length($_[0]) + 2) ) / 2), "\n";
+    } else {
+	print '-' x 60, "\n";
+    }
+}
+
+#
+# that's all folks
+

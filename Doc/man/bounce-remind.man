@@ -1,0 +1,198 @@
+
+
+
+     bbbboooouuuunnnncccceeee((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 bbbboooouuuunnnncccceeee((((1111))))
+
+
+
+     NNNNAAAAMMMMEEEE
+          bounce, bounce-remind - handle majordomo list subscribers
+          whose mail is undeliverable
+
+     SSSSYYYYNNNNOOOOPPPPSSSSIIIISSSS
+          bbbboooouuuunnnncccceeee [[[[----dddd]]]] [[[[----ffff _c_o_n_f_i_g-_f_i_l_e ]]]] [[[[----mmmmaaaajjjjoooorrrrddddoooommmmoooo _s_e_r_v_e_r-_a_d_d_r_e_s_s ]]]]
+          [[[[----uuuunnnnssssuuuubbbb]]]] _m_a_j_o_r_d_o_m_o-_l_i_s_t _u_s_e_r-_a_d_d_r_e_s_s
+
+          bbbboooouuuunnnncccceeee [[[[----dddd]]]] [[[[----ffff _c_o_n_f_i_g-_f_i_l_e ]]]] [[[[----mmmmaaaajjjjoooorrrrddddoooommmmoooo _s_e_r_v_e_r-_a_d_d_r_e_s_s ]]]]
+          ----eeeexxxxppppiiiirrrreeee [[[[----mmmmaaaaxxxxaaaaggggeeee _d_a_y_s ]]]] _b_o_u_n_c_e-_a_d_d_r_e_s_s-_f_i_l_e
+
+          bbbboooouuuunnnncccceeee----rrrreeeemmmmiiiinnnndddd
+
+     AAAAVVVVAAAAIIIILLLLAAAABBBBIIIILLLLIIIITTTTYYYY
+          Provided with distributions of Majordomo.
+
+     DDDDEEEESSSSCCCCRRRRIIIIPPPPTTTTIIIIOOOONNNN
+          bbbboooouuuunnnncccceeee and bbbboooouuuunnnncccceeee----rrrreeeemmmmiiiinnnndddd are perl scripts which help list
+          owners handle subscribers whose mail is bouncing.  Mail is
+          "bounced" in this context when it is undeliverable because
+          hosts or addresses are unreachable or because of other mail
+          errors.
+
+          Mail is also "bounced" by the resend script for various
+          administrative reasons; these bounces are described in
+          aaaapppppppprrrroooovvvveeee(1).
+
+          When a list owner observes that an email address
+          consistently causes mail errors, the owner may use bbbboooouuuunnnncccceeee to
+          remove the address from the list and place the address on a
+          special bbbboooouuuunnnncccceeeessss mailing list.
+
+          bbbboooouuuunnnncccceeee----rrrreeeemmmmiiiinnnndddd,,,, which should be run nightly by ccccrrrroooonnnn(4M),
+          sends a message to each of the user addresses on the bbbboooouuuunnnncccceeeessss
+          list, on the chance that the mail error has been corrected.
+          The message informs the addressee that their mail has been
+          undeliverable and that they have been removed from one or
+          more majordomo lists.  It also instructs them how to
+          unsubscribe from the bbbboooouuuunnnncccceeeessss list and re-subscribe to the
+          list of their choice.
+
+          bbbboooouuuunnnncccceeee can also be used to expire addresses off the bbbboooouuuunnnncccceeeessss
+          list after a predetermined number of days.
+
+          If bbbboooouuuunnnncccceeee is invoked under a name that contains ``unsub'' it
+          will simply unsubscribe the offending address from the
+          majordomo list; it will not place the address on the bbbboooouuuunnnncccceeeessss
+          list.
+
+     OOOOPPPPTTTTIIIIOOOONNNNSSSS
+          These options relate to bbbboooouuuunnnncccceeee;;;; bbbboooouuuunnnncccceeee----rrrreeeemmmmiiiinnnndddd takes no
+          arguments or options.
+
+
+
+     Page 1                                          (printed 9/24/96)
+
+
+
+
+
+
+     bbbboooouuuunnnncccceeee((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 bbbboooouuuunnnncccceeee((((1111))))
+
+
+
+          ----dddd        Debug; print what would be done, but don't do it.
+
+          ----ffff ccccoooonnnnffffiiiigggg----ffffiiiilllleeee
+                    Use the specified configuration file.  The default
+                    is ~~~~////....mmmmaaaajjjjoooorrrrddddoooommmmoooo,,,, and the format for this file is
+                    described in the CCCCOOOONNNNFFFFIIIIGGGGUUUURRRRAAAATTTTIIIIOOOONNNN section of the
+                    aaaapppppppprrrroooovvvveeee(1) man page.  This file provides the
+                    list-owner's password for each list and the
+                    address of the corresponding Majordomo server.
+
+          ----mmmmaaaajjjjoooorrrrddddoooommmmoooo sssseeeerrrrvvvveeeerrrr----aaaaddddddddrrrreeeessssssss
+                    Use this _s_e_r_v_e_r-_a_d_d_r_e_s_s for majordomo rather than
+                    the address from the configuration file.
+
+          ----uuuunnnnssssuuuubbbb    Unsubscribes the offending address from the
+                    majordomo list, without entering that address on
+                    the bbbboooouuuunnnncccceeeessss list.  This is equivalent to invoking
+                    bbbboooouuuunnnncccceeee under a name containing ``unsub''.
+
+          ----eeeexxxxppppiiiirrrreeee   Expire entries from the specified bbbboooouuuunnnncccceeeessss list.
+
+          ----mmmmaaaaxxxxaaaaggggeeee ddddaaaayyyyssss
+                    Expire entries older than ddddaaaayyyyssss....  The default is
+                    coded into the bbbboooouuuunnnncccceeee script as $$$$ddddeeeeffffaaaauuuulllltttt____mmmmaaaaxxxxaaaaggggeeee
+                    days.  It is set to 21 days in the majordomo
+                    distribution.
+
+     OOOOPPPPEEEERRRRAAAANNNNDDDDSSSS
+          mmmmaaaajjjjoooorrrrddddoooommmmoooo----lllliiiisssstttt
+                    The list from which the offending user-address
+                    should be removed.
+
+          uuuusssseeeerrrr----aaaaddddddddrrrreeeessssssss
+                    The address to which mail is currently
+                    undeliverable.
+
+          bbbboooouuuunnnncccceeee----aaaaddddddddrrrreeeessssssss----ffffiiiilllleeee
+                    The name of the file that contains the bbbboooouuuunnnncccceeeessss
+                    list.
+
+     CCCCOOOONNNNFFFFIIIIGGGGUUUURRRRAAAATTTTIIIIOOOONNNN
+          If bbbboooouuuunnnncccceeee is going to be used only to unsubscribe users, a
+          link can be created whose name contains ``unsub'' so that
+          users could be unsubscribed simply by typing
+
+             unsub firewalls-digest fury@world.std.com
+
+          for example.
+
+          In any case, a configuration file must exist and must
+          contain the names of the owner's lists, along with their
+          respective passwords and the email address of the associated
+
+
+
+     Page 2                                          (printed 9/24/96)
+
+
+
+
+
+
+     bbbboooouuuunnnncccceeee((((1111))))                 UUUUNNNNIIIIXXXX SSSSyyyysssstttteeeemmmm VVVV                 bbbboooouuuunnnncccceeee((((1111))))
+
+
+
+          Majordomo server.  The format of this file is given in the
+          CCCCOOOONNNNFFFFIIIIGGGGUUUURRRRAAAATTTTIIIIOOOONNNN section of the aaaapppppppprrrroooovvvveeee(1) man page.  The
+          default name for this file is ~~~~////....mmmmaaaajjjjoooorrrrddddoooommmmoooo,,,, and the same
+          file can serve for both the aaaapppppppprrrroooovvvveeee and bbbboooouuuunnnncccceeee scripts.
+
+          The bbbboooouuuunnnncccceeeessss list, if it is used, must be created.  It is
+          like any other Majordomo list excepting that the priority of
+          this list should be set to jjjjuuuunnnnkkkk and its owner and sender
+          should be nnnnoooobbbbooooddddyyyy.... Of course, the ``nobody'' mail alias must
+          exist; it is should be set to /dev/null.  That is,
+
+             nobody: /dev/null
+
+          This will spare the human list owner as well as the
+          postmaster from having to deal with mail bouncing from the
+          bbbboooouuuunnnncccceeeessss list.
+
+          A ccccrrrroooonnnn(1M) job should be set up to run bbbboooouuuunnnncccceeee----rrrreeeemmmmiiiinnnndddd every
+          night.  bbbboooouuuunnnncccceeee----rrrreeeemmmmiiiinnnndddd must run on the same server as the
+          bbbboooouuuunnnncccceeeessss list; it mails a message to everyone on the list
+          advising them that they have been removed from one or more
+          Majordomo lists and instructs them how to get off the
+          bbbboooouuuunnnncccceeeessss list and back on the list of their choice.
+
+          bbbboooouuuunnnncccceeee can only expire addresses if it has a copy of the
+          bbbboooouuuunnnncccceeeessss subscriber file, so this can either be run on the
+          server occasionally by the Majordomo administrator or by a
+          cron job.  It can also be run remotely with a copy of the
+          bbbboooouuuunnnncccceeeessss file retrived by the use of the ``who bounces''
+          command to majordomo.
+
+     FFFFIIIILLLLEEEESSSS
+          ////eeeettttcccc////aaaalllliiiiaaaasssseeeessss
+          ////eeeettttcccc////mmmmaaaajjjjoooorrrrddddoooommmmoooo....ccccffff
+
+     SSSSEEEEEEEE AAAALLLLSSSSOOOO
+          mmmmaaaajjjjoooorrrrddddoooommmmoooo((((8888)))),,,,aaaapppppppprrrroooovvvveeee((((1111))))
+
+     AAAAUUUUTTTTHHHHOOOORRRR
+          Majordomo and most of the ancillary perl code was written by
+          Brent Chapman <brent@GreatCircle.COM>.  Majordomo is
+          available via anonymous FTP from FTP.GreatCircle.COM, in the
+          directory pub/majordomo.  This man page was written by Kevin
+          Kelleher <fury@world.std.com>.
+
+
+
+
+
+
+
+
+
+
+
+     Page 3                                          (printed 9/24/96)
+
+
+

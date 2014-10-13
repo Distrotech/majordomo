@@ -1,0 +1,138 @@
+	      _  _ ____  _ ____ ____ ___  ____ _  _ ____
+	      |\/| |__|  | |  | |__/ |  \ |  | |\/| |  |
+	      |  | |  | _| |__| |  \ |__/ |__| |  | |__|
+
+			    Release 1.94.4
+			       NEWLIST
+  --------------------------------------------------------------------------
+
+List names must be of the form "[a-z0-9_-]+" (in other words, letters,
+digits, underbars, or dashes only).  List may be of mixed or upper
+case, but all references to the list name below must be specified
+in lower case EXCEPT for the -l arguments of resend and majordomo.
+
+To create a list:
+
+1) Create an empty file called <list-name> in $listdir, mode 664.
+
+2) Create a file called "<list-name>.info" in $listdir, mode 664, with
+   the initial introductory info for the list in it.
+
+3) Create the appropriate entries for the list in your Sendmail
+   aliases file (/etc/aliases or a separate majordomo.aliases file.)
+
+   Each list requires several aliases.  For an example list called
+   'test', these aliases are required:
+
+       test		 The list alias itself
+       owner-test	 The owner of the list (who should get bounces)
+       test-request	 The address for administrative requests.
+       test-approval	 The person who approves postings to the list
+                         (for moderated lists as well as unmoderated ones)
+
+   These would look like this:
+
+       test:		 :include:/usr/test/majordomo-1.94.3/lists/test
+       owner-test:	 you,
+       test-request:	 "|/usr/test/majordomo-1.94.3/wrapper request-answer test"
+       test-approval:	 you
+
+   It's more likely that the outgoing messages to the list will be
+   passed through "resend" to catch Majordomo commands, as well as
+   give other useful features.  A typical set of aliases without anything
+   fancy, such as archiving or digesting, would look like this:
+
+       test:    "|/usr/test/majordomo-1.94.3/wrapper resend -l test test-list"
+       test-list:  :include:/usr/test/majordomo-1.94.3/lists/test
+       owner-test:   you,
+       test-owner:   you
+       test-request: "|/usr/test/majordomo-1.94.3/wrapper majordomo -l test"
+
+   Finally, a more complete set of aliases that provides digestification,
+   archiving, and header manipulation would look like:
+
+       test:"|/tools/majordomo/wrapper resend -l test -h cs.umb.edu test-outgoing"
+       test-digest:test
+
+       # I put the digest and archive programs on the outgoing list so that
+       # messages bounced by resend don't end up in the digest or archive
+       # unless I send them through resend explicitly. 
+       test-outgoing: :include:/usr/local/Lists/test,
+	  "| /tools/majordomo/wrapper digest -r -C -l test-digest test-digest-outgoing",
+          "| /tools/majordomo/wrapper archive2.pl -a  -m
+	   -f /usr/local/mail/archive/test/test.archive"
+       # archive produces a monthly archive with the -m flag.
+
+       test-digest-outgoing::include:/usr/local/Lists/test-digest
+
+       owner-test:you,
+       owner-test-outgoing:owner-test
+
+       # note that the "-digest" and "-digest-outgoing" suffixes
+       # are required to allow the majordomo mkdigest command, and the
+       # config code to work properly.
+       owner-test-digest:owner-test
+       owner-test-digest-outgoing:owner-test
+
+       test-request: "|/tools/majordomo/wrapper request-answer test"
+       test-digest-request: "|/tools/majordomo/wrapper request-answer test-digest"
+
+       test-approval:you,
+       test-digest-approval:test-approval
+
+   As you can see, setting up a list can be quite complex.  
+
+   You can run majordomo at the -request address (recommended), and it will
+   handle requests such as:
+
+	subscribe
+	unsubscribe
+	signoff
+
+   without requiring the user to supply a list name. To do this set up an
+   alias similar to:
+
+        test-request: "|/tools/majordomo/wrapper majordomo -l test"
+
+   Where the argument to -l is the name of the list.
+
+   Hopefully in a future release of majordomo archive2.pl will be
+   integrated into majordomo so that the frequency of archive rollover
+   (daily, monthly, yearly) will be controllable via the config file
+   mechanism.
+
+	***** NOTE: CONVERTING FROM A PREVIOUS MAJORDOMO VERSION *****
+	For those who are converting from an earlier version of
+	majordomo, note that resend has very few command line
+	arguments. If you don't strip the command line arguments from resend,
+	the comments in the configuration file that deal with default
+	values for resend will be incorrect.
+
+
+   More examples of alias setups can be found in the file majordomo.aliases.
+   For sendmail users, don't forget to run 'newaliases' to rebuild the
+   alias database.
+
+
+4) If the list will be archived, create an archive directory in the
+   location specified by the $filedir and $filedir_suffix variables.
+
+5) If the list has a digest, create a digest work (incoming) subdirectory
+   under $digest_work_dir.  Use the same name as the digest list (example:
+   test-digest).  You also must create an archive directory for the digest
+   list as explained in step 4.
+
+6) Finally, make sure everything is owned by user majordomo, group
+   majordomo, and writable by both owner and group (i.e., mode 664 for
+   files and mode 775 for directories).
+
+7) Now issue a 'config <listname> <listname>.admin' command to
+   Majordomo. This will cause it to create a default configuration
+   file for the list, and send it back to you.  Make any desired
+   changes, SUCH AS CHANGING THE DEFAULT PASSWORDS, as well as adding
+   a description, and send it back with the 'newconfig' command.
+
+
+Now send a test subscribe and unsubscribe, just to further verify that
+the list is working.
+

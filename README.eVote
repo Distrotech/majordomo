@@ -1,0 +1,81 @@
+eVote is a majordomo-addon that allows the list's members to take
+polls.  It attaches to a majordomo-run email list by insertion into
+the alias:
+
+sample: "|/usr/local/majordomo/wrapper eVote_insert resend ..."
+
+You can get the free Linux-ready software, in French or English, at
+http://www.deliberate.com or you can join a fiddle@deliberate.com
+majordomo-run list to play with it.
+
+eVote also provides support for multi-lingual web/email petitions
+(English, French, and Spanish).
+
+eVoted Email Lists
+====== ===== =====
+
+eVote-enabled email lists feature:  
+
+*   Polls are initialized and administered by the members of the email
+    list with overriding powers given to the list's owner.
+
+*   Members can change their own votes -- until the poll closes. 
+
+*   Poll types supported are:  
+    +  "Yes/No" votes or "Numeric" votes. 
+    +  "Single" items or "Grouped" items, examples being "Vote for One
+       of the Next Five" and "Distribute 20 Votes over the Next 10 Items".
+
+*   3 secrecy options:  
+    + "Public" items: Members can see how other members voted. 
+    + "Private" items: Votes are secret. 
+    + "If-Voted" items: Members can see IF but not HOW others have voted.  
+
+*   The vote tally can be displayed while the poll is open, or hidden
+    until the poll is closed.
+
+How it works: eVote attaches to the email list in the alias file. Most
+messages sent to the list's address are broadcast to the list as
+usual.  However, messages that start with the word "eVote" are scooped
+out of the message stream and processed by eVote.
+
+eVote Petitions
+===== =========
+
+eVote provides support for multi-lingual petitions that are signed and
+administered by email.
+
+*   Allows only one signature per email address. 
+*   Verifies email addresses by email receipt. 
+*   Provides bounced mail support. 
+*   Allows the signer to remove his own signature. 
+*   Provides optional display of signatures. 
+*   Integrates with remote WWW sites.  
+*   Signatures are collected from the web site via Javascript. 
+*   Customized html reports are updated automatically via ftp.  
+*   Supports email forms as specified by the initializer of the petition. 
+*   Provides remote initialization and administration of petitions. 
+*   Optionally integrates with Majordomo allowing petitions to be
+    administered by committee.
+*   Software limited to over 4 billion signers.  
+
+
+The Clerk
+=== =====    
+
+The Clerk is the underlying vote-server that maintains the data for
+all eVote's interfaces. There is no other database server involved.
+
+The Clerk is an object-oriented C++ specialized database server,
+specialized in that it can only serve vote data. It has no flexibility
+in the data types it can store as do generalized relational or
+object-oriented database servers.
+
+What is lost in flexibility is gained in automation: control of each
+datum is given to the person who contributes it; the data are
+maintained completely automatically. The administrator is not
+involved.
+
+Questions?  Write marilyn@deliberate.com.
+
+http://www.deliberate.com

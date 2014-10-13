@@ -1,0 +1,559 @@
+#!/usr/bin/perl -U
+
+# Copyright 1996 MACS, Inc. 
+# Copyright 1992, D. Brent Chapman.  See the Majordomo license agreement
+#     for usage rights.
+#
+# $Source: /sources/cvsrepos/majordomo/contrib/sequencer,v $
+# $Revision: 1.2 $
+# $Date: 1996/12/09 16:50:48 $
+# $Author: cwilson $
+# $State: Exp $
+#
+# $Locker:  $
+#
+
+# sequence - a program for sequencing and archiving e-mail messages 
+# from majordomo
+#
+# Based heavily upon the resend script included in the majordomo distribution
+
+# set our path explicitly
+$ENV{'PATH'} = "/bin:/usr/bin:/usr/sbin:/sbin";
+
+# What shall we use for temporary files?
+$tmp = "/tmp/majordomo.$$";
+
+# Before doing anything else tell the world I am sequencer
+# The mj_ prefix is reserved for tools that are part of majordomo proper.
+$main'program_name = 'sequencer';
+
+
+# If the first argument is "@filename", read the real arguments
+# from "filename", and shove them onto the ARGV for later processing
+# by &Getopts()
+
+if ($ARGV[0] =~ /^@/) {
+    $fn = shift(@ARGV);
+    $fn =~ s/^@//;
+    open(AV, $fn) || die("open(AV, \"$fn\"): $!\nStopped");
+    undef($/);	# set input field separator
+    $av = <AV>;	# read whole file into string
+    close(AV);
+    @av = split(/\s+/, $av);
+    unshift(@ARGV, @av);
+    $/ = "\n";
+}
+    
+# Read and execute the .cf file
+$cf = $ENV{"MAJORDOMO_CF"} || "/etc/majordomo.cf";
+if ($ARGV[0] eq "-C") {
+    $cf = $ARGV[1];
+    shift(@ARGV); 
+    shift(@ARGV); 
+}
+if (! -r $cf) {
+    die("$cf not readable; stopped");
+}
+require "$cf";
+
+chdir($homedir) || die("Can't chdir(\"$homedir\"): $!");
+unshift(@INC, $homedir);
+require "majordomo.pl";
+require "majordomo_version.pl";
+require "getopts.pl";
+require "config_parse.pl";
+require "shlock.pl";
+
+&Getopts("Aa:df:h:I:l:m:M:nNp:Rr:s") || die("sequencer: Getopts() failed: $!");
+
+if (! defined($opt_l) || ! defined($opt_h)) {
+    die("sequencer: must specify both '-l list' and '-h host' arguments");
+}
+
+# smash case for the list name
+$opt_l =~ tr/A-Z/a-z/;
+
+if ( ! @ARGV) {
+    die("sequencer: must specify outgoing list as last arg(s)");
+}
+
+$opt_r = "$opt_r@$opt_h" if ( defined($opt_r) );
+
+&get_config($listdir, $opt_l);
+
+$opt_A = &cf_ck_bool($opt_l,"moderate") if &cf_ck_bool($opt_l,"moderate");
+$opt_h = $config_opts{$opt_l,"resend_host"} 
+			if($config_opts{$opt_l,"resend_host"} ne '');
+$opt_a = $config_opts{$opt_l,"approve_passwd"}
+			if ($config_opts{$opt_l,"approve_passwd"} ne '');
+$opt_M = $config_opts{$opt_l,"maxlength"} 
+			if ($config_opts{$opt_l,"maxlength"} ne '');
+
+$opt_f = $config_opts{$opt_l,"sender"}
+			if ($config_opts{$opt_l,"sender"} ne '');
+$opt_p = $config_opts{$opt_l,"precedence"}
+			if ($config_opts{$opt_l,"precedence"} ne '');
+$opt_r = $config_opts{$opt_l,"reply_to"}
+			if ($config_opts{$opt_l,"reply_to"} ne '');
+$opt_I = $config_opts{$opt_l,"restrict_post"} 
+			if ($config_opts{$opt_l,"restrict_post"} ne '');
+$opt_R = &cf_ck_bool($opt_l,"purge_received")
+			 if &cf_ck_bool($opt_l,"purge_received");
+$opt_s = &cf_ck_bool($opt_l,"administrivia")
+			if &cf_ck_bool($opt_l,"administrivia");
+$opt_d = &cf_ck_bool($opt_l,"debug") 
+			if &cf_ck_bool($opt_l,"debug");
+
+if (defined($opt_f)) {
+    $sendmail_sender = $opt_f;
+} else {
+    $sendmail_sender = "$opt_l-request";
+}
+
+if (defined($opt_a)) {
+    if ($opt_a =~ /^\//) {
+	open(PWD, $opt_a) || die("sequencer: open(PWD, \"$opt_a\"): $!");
+	$opt_a = &chop_nl(<PWD>);
+    }
+}
+
+if (defined($opt_A) && ! defined($opt_a)) {
+    die("sequencer: must also specify '-a passwd' if using '-A' flag");
+}
+
+# code added for getting new sequence number
+
+if (defined($opt_N)) {
+	$opt_n = $opt_N;
+}
+
+if (defined($opt_n)) {
+	$seqfile = "$listdir/$opt_l.seq";
+	if (! -r $seqfile) {   # if there is no sequence file, make one
+		open(SEQ, ">$seqfile") || die("sequencer: open of $seqfile failed: $!");
+		print SEQ "1\n";
+		close SEQ;
+	}
+	&main'lopen(SEQ, "<", "$seqfile") || die("sequencer: locked open of $seqfile failed: $!");
+	chop($seqnum = <SEQ>);
+
+# note that the sequence file is opened and locked from here until 
+# the message is sent
+
+}
+
+
+$sender = "$sendmail_sender@$opt_h";
+
+&open_temp(OUT, "/tmp/sequencer.$$.out") ||
+    &abort("sequencer:1 Can't open /tmp/sequencer.$$.out: $!");
+
+&open_temp(IN, "/tmp/sequencer.$$.in") ||
+    &abort("sequencer: Can't open /tmp/sequencer.$$.in: $!");
+
+while (<STDIN>) {
+    print IN $_;
+}
+
+close(IN);
+
+open(IN, "/tmp/sequencer.$$.in") || 
+    die("sequencer: Can't open /tmp/sequencer.$$.tmp: $!");
+
+do {
+    $restart = 0;
+    $pre_hdr = 1;
+    while (<IN>) {
+	if ($pre_hdr) {
+	    if (/^\s*$/) {
+		# skip leading blank lines; usually only there if this is a
+		# restart after an in-body "Approved:" line
+		next;
+	    } else {
+		$pre_hdr = 0;
+		$in_hdr = 1;
+		$kept_last = 0;
+	    }
+	}
+	if ($in_hdr) {
+	    if (/^\s*$/) {
+		# end of header; add new header fields
+		# if there is no subject, create one
+		if (!defined($subject)) {
+			local($foo);
+			if ($config_opts{$opt_l,"subject_prefix"} ne '') {
+				$foo = &config'substitute_values(
+					$config_opts{$opt_l,"subject_prefix"}, $opt_l);
+# for sequencing we add a special keyword!
+				if (defined($opt_n)) {
+					$foo =~ s/\$SEQNUM/$seqnum/;
+				}
+				local($foo_pat) = $foo;
+				$foo_pat =~ s/(\W)/\\$1/g;
+				if (!/$foo_pat/) {
+					$foo = $foo . " ";
+				}
+			}
+			$subject = $foo . "Message for " . $opt_l;
+			print OUT $subject, "\n";
+		}
+
+		print OUT "Sender: $sender\n";
+		if (defined($opt_p)) {
+		    print OUT "Precedence: $opt_p\n";
+		}
+		if (defined($opt_r)) {
+		    print OUT "Reply-To: ", &config'substitute_values($opt_r),
+				 "\n";
+		}
+
+		# print out additonal headers
+		if ( $config_opts{$opt_l,"message_headers"} ne '' ) {
+			local($headers) = &config'substitute_values (
+			$config_opts{$opt_l,"message_headers"}, $opt_l);
+			$headers =~ s/\001/\n/g;
+			print OUT $headers;
+		}
+
+		$in_hdr = 0;
+		print OUT $_;
+
+		# print out front matter
+		if ( $config_opts{$opt_l,"message_fronter"} ne '' ) {
+			local($fronter) = &config'substitute_values (
+			$config_opts{$opt_l,"message_fronter"}, $opt_l);
+			$fronter =~ s/\001|$/\n/g;
+			print OUT $fronter;
+		}		
+	    } elsif (/^approved:\s*(.*)/i && defined($opt_a)) {
+		$approved = &chop_nl($1);
+		if ($approved ne $opt_a && 
+			!(&main'valid_passwd($listdir, $opt_l, $approved))) {
+		    &bounce("Invalid 'Approved:' header");
+		}
+	    } elsif (/^from /i		# skip all these headers
+		|| /^sender:/i
+		|| /^return-receipt-to:/i
+		|| /^errors-to:/i
+		|| /^return-path:/i
+		|| (/^reply-to:/i && defined($opt_r))	# skip only if "-r" set
+		|| (/^precedence:/i && defined($opt_p))	# skip only if "-p" set
+		|| (/^received:/i && defined($opt_R))	# skip only if "-R" set
+		|| (/^\s/ && ! $kept_last)		# skip if skipped last
+	    ) {
+		# reset $kept_last in case next line is continuation
+		$kept_last = 0;
+	    } else {
+ 		   # check for administrivia requests 
+		   if (defined($opt_s) && ! defined($approved)
+		       && (/^subject:\s*subscribe\b/i ||
+			   /^subject:\s*unsubscribe\b/i ||
+			   /^subject:\s*help\b/i ||
+			   /^subject:\s*RCPT:\b/ ||
+			   /^subject:\s*Delivery Confirmation\b/ ||
+			   /^subject:\s*NON-DELIVERY of:/ ||
+			   /^subject:\s*Undeliverable Message\b/ ||
+			   /^subject:\s*Receipt Confirmation\b/ ||
+			   /^subject:\s*Failed mail\b/ ||
+			   /^subject:\s.*\bchange\b.*\baddress\b/ ||
+			   /^subject:\s*request\b.*\baddition\b/i)) {
+		       &bounce("Admin request");
+		       } 
+
+		    # prepend subject prefix
+		    if (   (/^subject:\s*/i) &&
+			   ($config_opts{$opt_l,"subject_prefix"} ne '') 
+		       ) {
+			 local($foo) = &config'substitute_values(
+			    $config_opts{$opt_l,"subject_prefix"}, $opt_l);
+# for sequencing we add a special keyword!
+			 if (defined($opt_n)) {
+				 $foo =~ s/\$SEQNUM/$seqnum/;
+			 }
+			 $subject = $_;
+			 $subject =~ s/^subject:\s*(.*)/$1/i;
+			 $subject = &chop_nl($foo . " " . $subject);
+			 local($foo_pat) = $foo;
+			 $foo_pat =~ s/(\W)/\\$1/g;
+			 s/^subject:\s*/Subject: $foo /i if !/$foo_pat/;
+			}
+
+		    if ( /^from:\s*(.+)/i )
+		    {
+			$from = $1;
+			$from_last = 1;
+		    }
+		    elsif ( defined($from_last) )
+		    {
+			if ( /^\s+(.+)/ )
+			{
+			    $from .= " $1";
+			}
+			else
+			{
+			    undef($from_last);
+			}
+		    }
+		&check_hdr_line($_);	# check for length & balance
+		$kept_last = 1;
+		print OUT $_;
+	    }
+	} else {
+	    # this isn't a header line, so print it (maybe)
+	    # first, though, is the first line of the body an "Approved:" line?
+	    if (($body_len == 0) && /^approved:\s*(.*)/i && defined($opt_a)) {
+		# OK, is it a valid "Approved:" line?
+		$approved = &chop_nl($1);
+		if ($approved ne $opt_a &&
+			!(&main'valid_passwd($listdir, $opt_l, $approved))) {
+		    &bounce("Invalid 'Approved:' header");
+		} else {
+		    # Yes, it's a valid "Approved:" line...
+		    # So, we start over
+		    $restart = 1;
+		    close(OUT);
+		    unlink("/tmp/sequencer.$$.out");
+		    &open_temp(OUT, "/tmp/sequencer.$$.out") ||
+			&abort("sequencer:2 Can't open /tmp/sequencer.$$.out: $!");
+		    last;
+		}
+	    }
+	    $body_len += length($_);
+	    # make sure it doesn't make the message too long
+	    if (defined($opt_M) && ! defined($approved)
+		    && ($body_len > $opt_M)) {
+		&bounce("Message too long (>$opt_M)");
+	    }
+	    # add admin-request recognition heuristics here... (body)
+	    if (defined($opt_s) && ! defined($approved) && ($body_line++ < 5) && (
+		/\badd me\b/i
+		|| /\bdelete me\b/i || /\bremove\s+me\b/i
+		|| /\bchange\b.*\baddress\b/
+		|| /\bsubscribe\b/i || /^sub\b/i
+		|| /\bunsubscribe\b/i || /^unsub\b/i
+		|| /^\s*help\s*$/i		# help
+		|| /^\s*info\s*$/i		# info
+		|| /^\s*info\s+\S+\s*$/i	# info list
+		|| /^\s*lists\s*$/i		# lists
+		|| /^\s*which\s*$/i		# which
+		|| /^\s*which\s+\S+\s*$/i	# which address
+		|| /^\s*index\s*$/i		# index
+		|| /^\s*index\s+\S+\s*$/i	# index list
+		|| /^\s*who\s*$/i		# who
+		|| /^\s*who\s+\S+\s*$/i		# who list
+		|| /^\s*get\s+\S+\s*$/i		# get file
+		|| /^\s*get\s+\S+\s+\S+\s*$/i	# get list file
+		|| /^\s*approve\b/i
+		|| /^\s*passwd\b/i
+		|| /^\s*newinfo\b/i
+		|| /^\s*config\b/i
+		|| /^\s*newconfig\b/i
+		|| /^\s*writeconfig\b/i
+		|| /^\s*mkdigest\b/i
+		)) {
+		  &bounce("Admin request");
+	    }
+	    print OUT $_;
+	}
+    }
+} while ($restart);
+
+if ( $config_opts{$opt_l,"message_footer"} ne '' ) {
+	local($footer) = &config'substitute_values(
+	$config_opts{$opt_l,"message_footer"}, $opt_l);
+	$footer =~ s/\001/\n/g;
+	print OUT $footer;
+}
+
+close(OUT);
+
+if ( defined($opt_I) && defined($from) && ! defined($approved) ) {
+    local($infile) = 0;
+ 
+    @files = split (/[:\t\n]+/, $opt_I);
+ 
+    foreach $file (@files) {
+	if ($file !~ /^\//) {
+	    $file = "$listdir/$file";
+	}
+        if ( open (LISTFD, "<${file}") != 0 ) {
+	    @output = grep (&addr_match($from, $_), <LISTFD>);
+            close (LISTFD);
+   
+            if ( $#output != -1 ) {
+                $infile = 1;
+                last;
+            }
+        } else {
+	    die("sequencer:Can't open $file: $!");
+	}
+    }
+ 
+    if ( $infile == 0 ) {
+        &bounce ("Non-member submission from [$from]");
+    }
+}
+
+if (defined($opt_A) && ! defined($approved)) {
+    &bounce("Approval required");
+}
+ 
+$sendmail_cmd = "/usr/lib/sendmail $opt_m -f$sendmail_sender " .
+    join(" ", @ARGV);
+
+if (defined($opt_d)) {
+    $| = 1;
+    print "Command: $sendmail_cmd\n";
+    $status = (system("cat /tmp/sequencer.$$.out") >> 8);
+    unlink(</tmp/sequencer.$$.*>);
+
+#remember to unlock the sequence file here!
+	if (defined($opt_n)) {
+		&main'lclose(SEQ);
+	}
+    exit($status);
+} else {
+    local(*MAILOUT, *MAILIN, @mailer);
+    @mailer = split(' ', "$sendmail_cmd");
+    open(MAILOUT, "|-") || &do_exec_sendmail(@mailer);
+# create archival copy
+	if (defined($opt_N)) {
+		if (open (INDEX, ">>$filedir/$opt_l$filedir_suffix/INDEX")) {
+			$timenow = localtime(time);
+			printf(INDEX  "%s\n\tFrom %s on %s\n", $subject, $from, $timenow);
+			close (INDEX);
+		}
+		open (ARCHIVE, ">$filedir/$opt_l$filedir_suffix/$seqnum");
+	}
+    open(MAILIN, "/tmp/sequencer.$$.out");
+    while (<MAILIN>) {
+      print MAILOUT $_;
+		if (defined($opt_N)) {
+		  print ARCHIVE $_;
+		}
+    }
+    close(MAILOUT);
+	if (defined($opt_N)) {
+		close(ARCHIVE);
+	}
+	if (defined($opt_n)) {
+		$seqnum++;
+		&main'lreopen(SEQ, ">", "$seqfile");
+		print SEQ $seqnum, "\n";
+		&main'lclose(SEQ);
+	}
+    close(MAILIN);
+    unlink(</tmp/sequencer.$$.*>);
+    exit(0);
+}
+
+sub check_balance {
+    # set a temporary variable
+    local($t) = shift;
+    # strip out all nested parentheses
+    1 while $t =~ s/\([^\(\)]*\)//g;
+    # strip out all nested angle brackets
+    1 while $t =~ s/\<[^\<\>]*\>//g;
+    # if any parentheses or angle brackets remain, were imbalanced
+    if ($t =~ /[\(\)\<\>]/ && ! defined($approved)) {
+	&bounce("Imbalanced parentheses or angle brackets");
+	return(undef);
+    }
+    return(1);
+}
+
+sub check_hdr_line {
+
+    local($_) = shift;
+
+    if (! /^\s/) {	# is this a continuation line?
+	# Not a continuation line.
+	# If $balanced_fld is defined, it means the last field was one
+	# that needed to have balanced "()" and "<>" (i.e., "To:", "From:",
+	# and "Cc:", so check it.  We do it here in case the last field was
+	# multi-line.
+
+	if (defined($balanced_fld)) {
+	    &check_balance($balanced_fld);
+	}
+
+	# we undefine $balanced_fld and reset $field_len; these may be set below
+
+	undef($balanced_fld);
+	$field_len = 0;
+    }
+
+    # is this a field that must be checked for balanced "()" and "<>"?
+    if (defined($balanced_fld) || /^from:/i || /^cc:/i || /^to:/i) {
+	# yes it is, but we can't check it yet because there might be
+	# continuation lines.  Buffer it to be checked at the beginning
+	# of the next non-continuation line.
+
+	# is this line too long?
+	if ((length($_) > 128) && ! defined($approved)) {
+	    &bounce("Header line too long (>128)");
+	    return(undef);
+	}
+
+	# is this field too long?
+	if ((($field_len += length($_)) > 1024) && ! defined($approved)) {
+	    &bounce("Header field too long (>1024)");
+	    return(undef);
+	}
+
+	$balanced_fld .= $_;
+	chop($balanced_fld);
+    }
+
+    # if we get here, everything was OK.
+    return(1);
+}
+
+sub bounce {
+    local($reason) = shift;
+    local($_);
+
+    &resend_sendmail(BOUNCE, $sender, "BOUNCE $opt_l@$opt_h: $reason");
+    
+    seek(IN, 0, 0);
+    while (<IN>) {
+	print BOUNCE $_;
+    }
+    close(BOUNCE);
+    unlink(</tmp/sequencer.$$.*>);
+    exit(0);
+}
+
+sub resend_sendmail {
+    local(*MAIL) = shift;
+    local($to) = shift;
+    local($subject) = shift;
+
+    # clean up the addresses, for use on the sendmail command line
+    local(@to) = &ParseAddrs($to);
+    for (@to) {
+        $_ = join(", ", &ParseAddrs($_));
+    }
+    $to = join(", ", @to);
+
+    # open the process
+    if (defined($opt_d)) {
+	# debugging, so just say it, don't do it
+	open(MAIL, ">-");
+	print MAIL ">>> /usr/lib/sendmail -f$sendmail_sender -t\n";
+    } else {
+    local(@mailer) = split(' ',"/usr/lib/sendmail -f$sendmail_sender -t");
+       open(MAIL, "|-") || &do_exec_sendmail(@mailer);
+    }
+
+    # generate the header
+    print MAIL <<"EOM";
+To: $to
+From: $sender
+Subject: $subject
+
+EOM
+
+    return;
+}

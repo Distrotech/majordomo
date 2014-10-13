@@ -1,0 +1,105 @@
+#!/bin/perl
+
+# send a reminder to folks on a bounce list
+
+# Brent Chapman                                   Great Circle Associates
+# Brent@GreatCircle.COM                           1057 West Dana Street
+# +1 415 962 0841                                 Mountain View, CA  94041
+
+# $Source: /sources/cvsrepos/majordomo/bounce-remind,v $
+# $Revision: 1.9 $
+# $Date: 1996/12/09 16:49:46 $
+# $Author: cwilson $
+# $State: Exp $
+#
+# $Locker:  $
+#
+
+$main'program_name = 'mj_bounce-remind';
+
+# Read and execute the .cf file
+$cf = $ENV{"MAJORDOMO_CF"} || "/etc/majordomo.cf";
+if ($ARGV[0] eq "-C") {
+    $cf = $ARGV[1];
+    shift(@ARGV);
+    shift(@ARGV);
+}
+if (! -r $cf) {
+    die("$cf not readable; stopped");
+}
+require "$cf";
+
+# Go to the home directory specified by the .cf file
+chdir("$homedir");
+
+# All these should be in the standard PERL library
+unshift(@INC, $homedir);
+
+# Set these here so that they can be interploated on the $mailer command line.
+$sender = "nobody\@$whereami";
+$to = "Bounces\@$whereami";
+$from = "nobody\@$whereami";
+$subject = "Bouncing email from mailing lists at $whereami";
+
+$mail_cmd = eval qq/"$mailer"/;
+
+open(MSG, "|$mail_cmd bounces\@$whereami") || 
+    die("open(MSG, \"|$mail_cmd bounces\@$whereami\"): $!\nStopped");
+
+print MSG <<EOF;
+To: $to
+From: $from
+Subject: $subject
+Reply-To: $whoami
+
+Your address has been moved to Bounces\@$whereami
+from some other mailing list at $whereami
+because email to you was bouncing.
+
+Here are the addresses currently on Bounces\@$whereami
+so that you can see which of your addresses is among them.
+The comment for each address shows the date it was moved,
+and the first list it was removed from.  If you were on
+multiple lists here, you may have been removed from them
+as well, but only the first list you were removed from
+will show up in the comment below.
+
+EOF
+
+open(LIST, "$listdir/bounces") 
+    || die("Can't read $listdir/bounces: $!; aborting");
+
+while (<LIST>) {
+    print MSG "\t$_";
+}
+
+close(LIST);
+
+print MSG <<EOF;
+
+If the problem has been fixed, you can get off of
+Bounces and back on to the other list by sending the
+following to $whoami:
+
+    subscribe list_name
+    unsubscribe bounces
+
+To subscribe or unsubscribe an address other than where you're
+sending the command from, append the other address to the end
+of the "subscribe" or "unsubscribe" command (for example,
+"subscribe your_list foo\@bar.com").
+
+You'll need to access the mailing list archives if you want to catch
+up on whatever you missed while you were off the main list.
+
+If you don't want to keep getting these reminders every day, but
+don't want to resubscribe to the list, send just the "unsubscribe"
+command shown above.
+
+If you need to contact a human being regarding this, send a message
+to $whoami_owner.
+EOF
+
+close(MSG);
+
+exit 0;

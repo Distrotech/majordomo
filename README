@@ -1,0 +1,569 @@
+	      _  _ ____  _ ____ ____ ___  ____ _  _ ____
+	      |\/| |__|  | |  | |__/ |  \ |  | |\/| |  |
+	      |  | |  | _| |__| |  \ |__/ |__| |  | |__|
+
+             Majordomo, noun: a person who speaks, makes
+	   arrangements, or takes charge for another.  From
+         Italian maggiordomo or Spanish mayordomo, both from
+        Medieval Latin "major domus" - "chief of the house".
+                     (Barnhart Concise Dictionary of Etymology) 
+
+			    Release 1.94.5
+				README
+--------------------------------------------------------------------------
+
+-> Current users of Majordomo whom are upgrading will want to    <-
+-> read the NEWS file for details on what has changed between    <-
+-> this and the previous version of Majordomo.                   <-
+
+     Release 1.94.5 of Majordomo is primarily a security and bugfix
+     release, incorporating changes which fix problems or correct
+     pressing deficiencies in version 1.94.4.  Please read the 
+     NEWS file for changes between versions 1.94.4 and 1.94.5
+
+		     * * * * * * * * * * * * * *
+
+If you know what Majordomo is and simply want install it, read the
+INSTALL file.  Browse through this file, though; there's probably
+something new here.
+
+		     * * * * * * * * * * * * * *
+
+--------------------
+* What is Majordomo?
+--------------------
+From the fine Majordomo FAQ (found in Doc/FAQ), maintained by Dave Barr
+<barr@math.psu.edu> :
+
+   Majordomo is a program which automates the management of Internet
+   mailing lists. Commands are sent to Majordomo via electronic mail to
+   handle all aspects of list maintenance. Once a list is set up,
+   virtually all operations can be performed remotely, requiring no
+   intervention upon the postmaster of the list site.
+   
+   Here's a short list of some of the features of Majordomo.
+   
+     * supports various types of lists, including moderated ones.
+     * List options can be set easily through a configuration file,
+       editable remotely.
+     * Supports archival and remote retrieval of messages.
+     * Supports digests.
+     * Written in Perl, - easily customizable and expandable.
+     * Modular in design.
+     * Includes support for FTPMAIL.
+       
+Majordomo is a "groupware" project.  It has evolved from the initial
+code base done by Brent Chapman (brent@greatcircle.com), with further
+maintenance done by John Rouillard (rouilj@cs.umb.edu).  The current
+Majordomo maintainer is Chan Wilson (cwilson@sgi.com).
+
+Along the way, it has picked up many features and additions from
+various authors.  Because of this, and due to the initial design of
+Majordomo, certain features (archiving, digesting, and moderated
+lists) are currently done in a "non-optimum" fashion.  In short,
+configuring Majordomo to do some of the advanced features can be
+confusing.  This is a known problem and is being worked on.
+
+
+You'll need the following to use Majordomo:
+
+       o  Perl, version 4.036 or version 5.002 (or better)
+	  **NOTE**  Future versions of Majordomo will *NOT* work
+	  with perl4.
+       o  a C compiler
+
+Other programs that might be useful are:
+
+       o  bulk_mailer: ftp://cs.utk.edu/pub/moore/bulk_mailer
+          For large lists.
+
+
+		     * * * * * * * * * * * * * *
+
+The INSTALL file details how to install and configure Majordomo.
+
+Once you've installed Majordomo, the NEWLIST file describes how to add
+new lists under Majordomo control.
+
+		     * * * * * * * * * * * * * *
+
+The rest of this README file fills in background information on
+Majordomo, where to get help, find others using Majordomo, common
+problems, and some other bits:
+
+        * Attributions
+        * Mailing Lists/Support
+        * More Documentation
+        * The list configuration files
+        * Common Problems
+        * Error Messages
+        * Using Digest and Archive
+        * Other Programs
+        * Tricks
+        * Customizing the default list config values
+
+--------------
+* Attributions
+--------------
+
+Majordomo and digest were originally written by Brent Chapman, however
+he doesn't have the time currently to do more development on it.  John
+Rouillard did a lot of work for configuration files and managed the
+releases for the 1.62 to 1.93 time frame.  Chan Wilson
+(cwilson@sgi.com) is currently "release coordinator" for 1.94 and
+beyond.
+
+The FAQ was compiled by Vincent D. Skahan and is currently being
+maintained by David Barr <barr@pop.psu.edu>.
+
+In addition to those above, the following people deserve recognition for 
+their contributions in shaping Majordomo:
+
+  Andrew Boyd
+  Paul Close
+  R. Gary Cutbill
+  Hamilton Gilbert
+  Jennifer Joy
+  Alan Millar
+  John C. Orthoefer
+  Jerry Peek
+  Paul Pomes
+  Jason L Tibbitts III <tibbs@hpc.uh.edu>
+  Dave Wolfe <david_wolfe@risc.sps.mot.com>
+
+To anybody I left off the attributions list, my apologies. Let me know
+that I left you off, and I will make sure that you get mention in a
+future release.
+
+-----------------------
+* Mailing Lists/Support
+-----------------------
+
+There are four mailing lists about Majordomo on GreatCircle.com. 
+The wise Majordomo-Owner is strongly advised to subscribe to
+Majordomo-Announce to learn of new versions and patches to Majordomo.
+This list is very low volume.
+
+People with questions about configuring, installing, or using
+Majordomo should subscribe to Majordomo-Users.
+
+People interesting in technical discussion of Majordomo, and
+developments on it, should join Majordomo-Workers.
+
+	Majordomo-Users    - for discussions on using Majordomo
+        Majordomo-Announce - for announcements of new releases
+	Majordomo-Workers  - for people interested in development of
+			     Majordomo.
+	Majordomo-Docs     - for people interested in development of
+			     documentation for Majordomo.
+
+To subscribe to any of the lists above, send an appropriate
+"subscribe" command to "Majordomo@GreatCircle.COM".
+
+--------------------
+* More Documentation
+--------------------
+
+The 'Doc' directory contains the FAQ (Frequently Asked Questions),
+which should answer most of your questions.  
+
+In the 'Doc/man' directory, you'll find manual pages for approve,
+bounce, bounce-remind, digest, resend, and majordomo.
+
+For your list-managers, the file Doc/list-owner-info contains some
+good information.  It can be sent to them and should be enough
+information to get them started using majordomo.  You'll want to
+update it for your site-specific needs. 
+
+'Doc/majordomo.ora' contains the chapter about Majordomo from the
+Nutshell Handbook "Managing Internet Information Services," written by
+Jerry Peek. The chapter is (c) Copyright 1994 by O'Reilly &
+Associates, Inc., and was included in the Majordomo distribution by
+permission of the publisher.
+
+While this chapter is a good introduction to setting up the majordomo
+software, it is a tad out of date, since it covers version 1.62. :-( Jerry
+is in the process of updating this for 1.94.3, and an updated version will
+hopefully be included in future releases.
+
+The original LISA 6 (Oct 1992, Long Beach, CA) paper describing
+Majordomo is at Doc/majordomo.lisa6.ps.  PLEASE NOTE that it is useful
+only for getting a feel for majordomo.  It should not be used as an
+installation document.
+
+You did read the FAQ, didn't you?
+
+
+------------------------------
+* The list configuration files
+------------------------------
+
+Each list has a configuration file associated with it,
+<listname>.config.  If a list does not have it's .config file, issue a
+'lists' command to Majordomo -- it'll create one for you.
+
+Ideally, the config file is meant to be self-documenting, but at the
+moment it can be overwhelming to a novice user.  This will be fixed in a
+future release.  The best way to learn about the configuration file is to
+issue a 'config <listname> <list administrative password>' to Majordomo,
+and carefully read through the results.  Also read the
+Doc/list-owner-info file, which explains some of the more commonly
+tweaked variables.
+
+In addition to the .config file, there are .info and .intro files that
+hold informative and introduction information about the list.  These
+files are best changed via Majordomo's 'newinfo' and 'newintro' commands.
+
+The file <list-name>.intro contains the "intro" text for the list,
+which is sent in response to "intro" and successful "subscribe"
+commands.  The file <list-name>.info contains the "info" text for the
+list, which is sent in response to "info"; it's also sent after a
+"subscribe" command if no "intro" file exists. 
+
+In a future version of majordomo, the option will be provided to keep
+the info in the config file rather than using an external
+file. However, the external file is useful if you are serving up the
+info information by some means other than majordomo (e.g. Web, finger,
+ftp).
+
+-------------------------------
+* Common Problems and Debugging
+-------------------------------
+Nearly all the install problems are now caught by the 'config-test'
+script that one runs after the install. 
+
+What is left, then, is primarily incorrect usage caused by configuring
+the aliases improperly, and changing the ownership of Majordomo files
+after it is up and running.  If you're still stuck, it's easy to turn
+some debugging on.
+
+If all else fails, the mailing lists mentioned above are a good place
+to ask for help.
+
+** Insecure Usage
+
+If you get complaints about "insecure usage" from "wrapper", then you're
+probably invoking it incorrectly.  The first argument to "wrapper" should
+be the simple filename of the program in the W_BIN directory (defined in
+the Makefile) that you want to run.  You should NOT specify the full path
+name to the program; as a security measure, to keep people from being able
+to run anything they want with the setuid/setgid permissions of "wrapper"
+"wrapper" will ONLY run programs from the W_BIN directory.  If what "wrapper"
+is told to run contains a "/", it assumes somebody is trying to make it run
+something from somewhere else, and complains about "insecure usage".  For
+example, the right way to use wrapper is in something like this:
+
+	majordomo: "|/usr/local/majordomo/wrapper majordomo"
+
+The WRONG way is "|/usr/local/majordomo/wrapper /usr/local/majordomo/majordomo"
+
+** Permissions
+
+Make sure you've got all the permissions right.  In particular, you need
+to watch for permissions of DIRECTORIES files are in, as well as
+permissions on the files themselves.  Almost any time Majordomo tries to
+read a file, and every time it tries to write one, it tries to create a
+lock file in the same directory as the file.  If it can't create that
+lock file for any reason (because the directory permissions won't allow
+it, or because a lock already exists for that file), Majordomo waits
+between 1 and 10 seconds (chosen randomly) and then tries again; it keeps
+trying for (by default) 5 minutes.  If Majordomo isn't working for you,
+and takes some multiple of 5 minutes to fail, you've almost certainly
+got a permission problem; check the Majordomo log file.  If there's
+nothing in the log file, then you've got a permission problem with the
+log file and/or the directory it's in.
+
+
+----------------
+
+** Debugging
+
+If messages to a particular list are getting mangled, perhaps due to
+custom headers, footers, or something else, try defining the 'debug'
+variable for the list.  This will cause resend (the Majordomo program
+that sends the message out to the list) to *not* send the message out,
+but leave it in $TMPDIR/resend.<process-id>.out.  You can then examine
+the message contents.
+
+If you suspect something deeper is amiss, then put '$DEBUG = 1;'  in
+your majordomo.cf.  This causes Majordomo and resend to spew debug
+messages to $TMPDIR/majordomo.debug and $TMPDIR/resend.debug,
+respectively, but operate as normally.  If you invoke your mailer in
+verbose mode ('Mail -v' or 'mail -v' will hopefully do this) then
+debug output will get sent to your terminal instead of the files.
+
+Finally, if you're up to mucking around in the perl code, symlinking
+perl into ~majordomo and invoking it via wrapper will give you a debug
+environment with Majordomo's permissions and view of the world:
+
+		~majordomo% ./wrapper perl -d majordomo
+
+Now set breakpoints, type 'continue', give it a valid email header and
+the desired Majordomo command.  The only header that you need is a
+valid "reply-to" field.  The rest is up to you.
+
+* Error Messages
+----------------
+Majordomo now catches most of problems that plagued earlier versions;
+disk space shortages, permissions problems, other resource problems.
+When at all possible, a comprehensible email is sent to the
+Majordomo-Owner, who should be able to fix things.  List-specific
+problems are usually sent to the list-owner.  Before attempting to track
+down errors and checking debug logs, be certain that running "wrapper
+config-test" as a normal user reports no problems.  The config-test code
+will detect most common causes of errors.
+
+Here's most of the error messages that Majordomo will return, and an
+explanation of why they might be seen:
+
+MAJORDOMO ABORT - This error occurs anytime some anomaly occurs during
+  the majordomo run.  It causes majordomo to send an error message to the
+  majordomo owner, and exit immediately.  No further commands in the
+  input message are processed.  Mail is sent to the originator of the
+  message that caused the abort consisting of the output from all command
+  in the message that had succeeded before the abort.  The types of
+  errors that cause an abort are shown below.
+
+  Hostile Address -- somebody submitted an address that majordomo deemed
+    to be a potential security problem.  Some mailers will execute any
+    command line appearing after a vertical bar, and will use addresses
+    beginning with a dash as an option instead of an address.  In
+    addition, if the addresses matches an existing file, the mailer may
+    attempt to overwrite it.  For these reasons, majordomo will refuse to
+    process such addresses.  Majordomo will do additional checks on
+    messages containing '/' characters to verify that they are correct
+    X400 addresses; these checks may be disabled in majordomo.cf.  (See
+    $no_true_x400 and $no_x400at.)
+
+  Non-domained Address -- an address was submitted that was of the form
+    user@host without a fully qualified domain name.  Addresses of this
+    form are usually caused by either confused users or improperly
+    configured mail transfer agents.  If your host is generating them, it
+    is misconfigured.
+
+  Can't open/append/read -- for some reason majordomo can't
+    open/append/read a to a file that it was supposed to be able to
+    access.  Usually this is caused by improper permissions.
+
+  chmod(, link(, operation not permitted -- the corresponding chmod or
+    link operation failed when it shouldn't have. Usually this is caused
+    by improper permissions, most often on the wrapper.  Make certain
+    that it is installed setuid, and that "wrapper config-test" run as a
+    normal user (not root or the majordomo user) reports no problems.
+
+  Can't invoke -- the program majordomo wanted to invoke to send mail
+    couldn't be invoked.  This error is usually only seen when you are
+    tracing the SMTP connection using /usr/ucb/Mail -v.
+
+  Can't connect to sendmail -- for some reason the attempt to run
+    sendmail in the function resend_sendmail in the resend program
+    failed.
+
+  mailer not executable -- either the configured mailer did not exist or
+    could not be run; make certain that config-test reports that the
+    mailer is properly accessible.  Bugs in previous versions caused
+    errors of the form "mailer -fMajordomo-Owner not executable."  These
+    bugs should be fixed; please report any occurrences of this type of
+    error just in case the bugs persist.
+
+  mailer exited unexpectedly with error XX -- it is expected that the
+    mailer will return a zero exit code upon success, so any nonzero
+    code is reported as an error. The mail may or may not have been
+    properly sent to your list. To track down the source of this
+    error, first inspect the debug logs (see Debugging below) to see
+    if the mailer emitted any diagnostics. Failing that, consult your
+    mailer's documentation for the meaning of the exit status, or if you
+    use Sendmail, consult the chart below for some of the more common
+    errors:
+
+    64 - EX_USAGE - Sendmail uses this to indicate a command line usage
+      error, but it also uses it to report a general error condition.
+      Some versions of Sendmail do this somewhat unpredictably and for
+      this reason the '-oee' flag has been added to the default mailer
+      definitions.  This flag should prevent these errors for versions of
+      Sendmail that support it.
+
+    67 - EX_NOUSER - The alias that is used to send out list mail (which
+      is passed as the last argument on resend's command line) does not
+      exist.  Make certain that there are no typographical errors in your
+      alias file, and that the file has been properly rebuilt.
+
+    69 through 74, 77 - These are generally serious errors that are
+      caused by either lack of resources or improper configuration of
+      Sendmail.  You should consult the Sendmail documentation.
+
+unknown mailer error XX - This can be caused by a number of things all
+	relating to the wrappers inability to execute the perl script.
+	This can include:
+
+	       the perl script is not executable
+	       the location of the perl program specified with the #!
+		   line is incorrect
+	       the location where the wrapper looks for the perl
+		   scripts is not the location where the scripts are
+		   located.
+
+	The current wrapper doesn't use the standard sendmail error
+	codes, hence the "unknown mailer error" annotation in the
+	error message. A future wrapper version will use the
+	appropriate errors from sysexits.h.
+  
+
+--------------------------
+* Using Digest and Archive
+--------------------------
+
+Digesting and Archiving will be integrated into Majordomo soon.  In
+the meantime, they require setting up additional aliases and
+configuring a few other things.
+
+For digests, read the README.digest and quick-digest-setup files in the
+Doc subdirectory, as well as the manual page in Doc/man
+
+For archiving, there are three archive programs available.  The best one
+to use is called archive2.pl, and it is present in the main Majordomo
+directory.  (If you'd like to use one of the other archivers, be sure to
+move it to, or make a link to it in, the main directory.)  Comments at
+the top of the file explain all the options available, and here's a brief
+extract that details what most people want:
+
+# A sample /etc/aliases file entry to use "archive" add each incoming message
+# to a "my-list.YYMM" file in the "/usr/local/mail/lists/my-list.archive"
+# directory:
+# 
+# 	my-list-archive: "|/usr/local/mail/majordomo/wrapper archive2.pl
+# 		-f /usr/local/mail/lists/my-list.archive/my-list
+# 		-m -a"
+
+
+----------------
+* Other Programs
+----------------
+
+The "bounce-remind" script should be run out of cron using a line similar to:
+
+	10 2 * * *  /tools/majordomo/wrappers/bblisa/wrapper bounce-remind
+
+This sends mail to all of the people on the bounces list to warn them
+that they are no longer on the lists they thought they were on.
+
+The "medit" program is used to hand edit the mailing list files, but
+it locks the files first so that majordomo won't touch them while you
+are editing them. You may need to edit this program and change the
+location of the majordomo.cf file if the majordomo.cf file is not
+accessible as /etc/majordomo.cf).
+
+The "new-list" is used when starting a new list. Often there is a
+flood of mail when a list starts up. If you wish to allow a grace
+period for people to subscribe before actually putting the list
+"on-line", the new-list script can be put at the list address, and it
+will notify people that the list is not yet open for business.
+
+The "request-answer" program attached to the "-request" address for
+the list sends back a recording telling folks how to use the Majordomo
+address for their requests, or how to contact a human if they really
+need to. You can use majordomo with the -l option to sit at the
+-request address instead of using request-answer if you like.
+
+The "approve" program is intended to be used by a mailing list
+administrator to approve messages send by majordomo or resend.
+
+The "bounce" program removes an address from an active majordomo list,
+and subscribes it to the bounces list. This is used when mail to the
+address starts bouncing.
+
+--------
+* Tricks
+--------
+
+This section has a few tricks when using majordomo and resend.
+
+1) How do I maintain the restrict_post file for resend?
+
+  The easiest way is to create a pseudo list in majordomo. The file
+  that contains this list if the file name used for the -I flag to
+  resend.  For example the filename "<listname>-can_post" can be
+  created in the majordomo mailing lists directory. This list should
+  be unadvertised and closed. Don't bother creating any sendmail
+  aliases for it. This allows people to be added to or removed from
+  the list using majordomo commands.
+
+2) How can I have more than one moderator/owner for a list?
+
+  Again majordomo is your friend. Create a mailing list called
+  "<listname>-owner". Again create it nonadvertised and closed.
+  Set up the appropriate aliases for the list:
+
+	owner-listname::include:/usr/local/Lists/<listname>-owner
+	listname-owner:owner-listname
+	owner-owner-listname: owner-majordomo
+
+  and you are done.
+
+3) I run smail. How do I set up majordomo to work in this environment?
+
+   Just set $sendmail_command to /bin/smail in your majordomo.cf.
+
+   It has been reported that by default smail does not understand the
+   :include: syntax, and that can be fixed by adding the following to
+   /etc/smail/directors:
+
+   aliasinclude:
+        driver=aliasinclude,
+        nobody;
+        copysecure,
+        copyowners,
+
+   (Thanks to Steve Casey <cm5292@scitsc.wlv.ac.uk> for this information.)
+
+
+------------------------------------------------
+* Customizing the default list config values
+------------------------------------------------
+
+The default values of the list configuration files are taken from the
+file 'config_parse.pl' in the associative array %known_keys.
+
+It's best to read the above section _The list configuration files_ and
+the Doc/list-owner-info file, as well as carefully reading an existing
+list configuration before continuing.
+
+If you want to change the defaults, change the values assigned to each
+keyword. There is some documentation in the config_parse.pl file. The
+config_parse.pl file is also a man page describing the programmatic
+interface to the config file parser and some other details about the
+config file parser.
+
+Paul Pomes p-pomes@uiuc.edu suggests the following as replacements for
+the message_fronter and message_footer default values. I haven't
+tested them, but they may be useful:
+
+
+'message_fronter',      '#! local($TEMP) = $list;
+      if ( $list =~ /-digest$/ ) {
+           $TEMP =~ s/-digest$//;
+          "In this issue:\n\n\t_SUBJECTS_\n\nSee the end of the digest for information on subscribing to the $TEMP\nor $TEMP-digest mailing lists.\n";
+      } else {
+          "";
+      }',
+'message_footer',      '#! local($TEMP) = $list;
+      if ( $list =~ /-digest$/ ) {
+           $TEMP =~ s/-digest$//;
+          "To subscribe to $TEMP-digest, send the command:\n\n\t
+	 subscribe $TEMP-digest\n\nin the body of a message to \"Majordomo@
+	 Majordomo.cso.uiuc.edu\".  If you want\nto subscribe something
+	 other than the account the mail is coming from,\nsuch as a local
+	 redistribution list, then append that address to the\n\"subscribe\"
+	 command; for example, to subscribe \"local-$TEMP\":\n\n\tsubscribe
+	 $TEMP-digest local-$TEMP@your.domain.net\n\nA non-digest
+	 (direct mail) version of this list is also available;
+	 to\nsubscribe to that instead, replace all instances of
+	 \"$TEMP-digest\"\nin the commands above with \"$TEMP\".";
+                                    } else {
+                                        "";
+                                    }',
+
+Note that the strings are all one line long. I have wrapped and broken
+them here for ease of viewing.
+
+--------------------

@@ -1,0 +1,18 @@
+
+firewalls: "|/usr/local/mail/majordomo/wrapper resend -l firewalls -h GreatCircle.COM firewalls-outgoing"
+firewalls-outgoing: :include:/usr/local/mail/lists/firewalls, firewalls-archive, firewalls-digestify
+firewalls-request: "|/usr/local/mail/majordomo/wrapper majordomo -l firewalls"
+firewalls-approval: brent
+owner-firewalls: brent
+owner-firewalls-outgoing: owner-firewalls
+
+firewalls-archive: /usr/local/mail/archive/firewalls
+
+firewalls-digestify: "|/usr/local/mail/majordomo/wrapper digest -r -C -l firewalls-digest firewalls-digest-outgoing"
+
+firewalls-digest: firewalls
+firewalls-digest-outgoing: :include:/usr/local/mail/lists/firewalls-digest
+firewalls-digest-request: "|/usr/local/mail/majordomo/wrapper majordomo -l firewalls-digest"
+firewalls-digest-approval: brent
+owner-firewalls-digest-outgoing: owner-firewalls
+

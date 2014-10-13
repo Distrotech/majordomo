@@ -1,0 +1,28 @@
+#! /bin/sh
+# This script was contributed by "Paul Pomes" <P-Pomes@uiuc.edu>
+#
+#  It only works with versions of "digest" that have been modified
+#  to work with the config file moddifications in majordomo 1.90 and above.
+#  This script can be called from cron to automatically generate
+#  digests for all of the lists in DIGESTDIR. E.G.
+#
+#  daily
+#	0 2 * * * /path/to/digest.send
+#
+#  weekly (on monday)
+#	0 2 * * 1 /path/to/digest.send
+#
+#  monthly (first of the month)
+#       0 2 1 * * /path/to/digest.send
+#
+DIGESTDIR=/usr/spool/digests
+cd $DIGESTDIR
+
+for i in *
+do
+  if [ -f $i/001 ];
+  then
+     /path/to/majordomo/wrapper digest -m -C -l $i ${i}-outgoing
+  fi
+done
+
