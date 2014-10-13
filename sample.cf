@@ -6,7 +6,7 @@
 
 # $whereami -- What machine am I running on?
 #
-$whereami = "example.com";
+$whereami = "example.co.za";
 
 # $whoami -- Who do users send requests to me as?
 #
@@ -45,8 +45,8 @@ $log = "$homedir/Log";
 #                      usually /usr/lib/sendmail, but some newer BSD systems
 #                      seem to prefer /usr/sbin/sendmail
 #
-$sendmail_command = "/usr/lib/sendmail";
-# $sendmail_command = "/usr/sbin/sendmail";
+#$sendmail_command = "/usr/lib/sendmail";
+$sendmail_command = "/usr/sbin/sendmail";
 
 # $mailer -- What program and args do I use to send mail to the list?
 # $bounce_mailer -- What is used to send mail anywhere else?
@@ -190,7 +190,7 @@ die "Perl version $] too old\n" if ($] < 4.019);
 # majordomo has r/w permission to.
 # Uses the environment variable TMPDIR, since that's pretty common
 #
-$TMPDIR = $ENV{'TMPDIR'} || "/usr/tmp";
+$TMPDIR = $ENV{'TMPDIR'} || "/tmp";
 
 # Tune how long set_lock tries to obtain a lock before giving up. Each
 # attempt waits 1 to 10 seconds before trying again and waittime is
